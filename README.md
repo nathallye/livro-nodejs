@@ -12,7 +12,7 @@ Por exemplo, se quisermos utilizar o ExpressJS basta digitar o comando seguinte 
 $ npm install express
 ```
 
-Ou 
+Ou abreviando o `install` para `i`:
 
 ``` bash
 $ npm i express
