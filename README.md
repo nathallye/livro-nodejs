@@ -8,13 +8,13 @@
 
 Por exemplo, se quisermos utilizar o ExpressJS basta digitar o comando seguinte no terminal:
 
-``` bash
+``` 
 $ npm install express
 ```
 
 Ou abreviando o `install` para `i`:
 
-``` bash
+``` 
 $ npm i express
 ```
 
@@ -22,7 +22,7 @@ Com esse comando, o módulo será baixado para uma pasta chamada `node_modules` 
 
 Vale configurar na máquina local os dados no npm. No linux é necessário criar ou editar o arquivo `.npmrc` na raizxz do usuário.
 
-``` bash
+``` 
 $ cat ~/.npmrc
 
 init.author.name=[user-name]
@@ -34,7 +34,7 @@ init.author.url=[user-url]
 
 O comando `npm update` nos ajuda a verificar quais módulos que podem ser atualizados.
 
-``` bash
+``` 
 $ npm update -save
 ```
 
@@ -52,20 +52,20 @@ Ele instala o módulo numa pasta temporária - se já não estiver instalado no 
 
 Em vez de fazer:
 
-``` bash
+``` 
 $ npm install -g express-generator
 $ express
 ```
 
 Usando npx, fazemos:
 
-``` bash
+``` 
 $ npx express-generator
 ```
 
 Outro exemplo, executando o `cowsay`(é uma vaca falante configurável):
 
-``` bash
+``` 
 $ npx cowsay "Eu, Luke Skywalker, juro por minha honra e pela fé da irmandade dos cavaleiros, usar a Força apenas para o bem, sempre negando
 ceder ao Lado Sombrio, e dedicar minha vida a causa da liberdade e da justica. Se eu nao cumprir esse voto, minha vida será perdida,
 aqui e no futuro."
@@ -77,18 +77,336 @@ aqui e no futuro."
 
 Instalando o learnyounode globalmente:
 
-``` bash
+``` 
 $ npm install -g learnyounode
 ```
 
 Inciando o learnyounode:
 
-``` bash
+``` 
 $ learnyounode
 ```
 
 Ou usuando o npx:
 
-``` bash
+``` 
 $ npx learnyounode
 ```
+
+#### 1.3.3 yarn
+
+O `yarn` é uma alternativa ao cli `npm`. Deve ser instalado como pacote global, depois explicitamente dito que queremos a tal versão:
+
+``` 
+$ npm i -g yarn
+$ yarn set version 2
+$ yarn -v
+2.4.0
+```
+
+Podemos utilizar `yarn install` em vez de usar `npm install` - ou `npm i` - para gerenciar as dependênciasn dos nossos projetos. Da mesma forma que o `npm` cria um `package-lock.json`, o `yarm` cria um arquivo `yarn.lock` para garantir as versões internas das dependências instaladas.
+
+O comando `yarn dlx` é o equivalente ao `npx`:
+
+```
+$ yarn dlx cowsay "Eu, Luke Skywalker, juro por minha honra e pela fé da irmandade dos cavaleiros, usar a Força..."
+```
+
+### 1.4 Console do NodeJS (REPL)
+
+O NodeJS disponibiliza uma forma para acessar as propriedades e funções utilizando o terminal do sistema operacional sem que seja necessário escrever e salvar códigos em um arquivo. Útil para testar pequenos trechos de código e entender como as coisas funcionam. Esse é o REPL também chamado de console.
+
+Para entarr no console do NodeJS, basta digitar `node` no terminal:
+
+```
+$ node
+```
+
+O console aceita qualquer expressão JS válida, como:
+
+```
+> 1 + 1
+2
+```
+
+Podemos usar o console do NodeJS para validar uma expressão regular:
+
+```
+> /rato/g.test("O rato roeu a roupa")
+true
+```
+
+O padrão `/rato/` casou com o texto "O rato roeu a roupa". Se mudássemos `rato` para `gato`, teríamos um `false`:
+
+```
+> /rato/g.test("O gato comeu a roupa")
+false
+```
+
+Se quisermos que a regex case tanto com a frase "O rato roeu a roupa" quanto com a frase "O gato comeu a roupa", basta alterar para:
+
+```
+> /(g|r)ato (ro|com)eu/g.test("O rato roeu a roupa")
+true
+> /(g|r)ato (ro|com)eu/g.test("O gato comeu a roupa")
+true
+```
+
+Para escrever na saída (stdout), utilizamos o `console.log()`:
+
+```
+> console.log("Nathallye")
+Nathallye
+Undefined
+```
+
+O primeiro retorno após a chamada da função `console.log()`, com a mesma string que passamos como argumento é a saída, e a linha após esta, com `undefined` é o retorno.
+
+É bem parecido com o console dos navegadores, mas diferentemente dos browsers - no NodeJS - o objeto `window` global do navegador não existe.
+
+```
+> window
+Uncaught ReferenceError: window is not defined
+```
+
+No NodeJS, o objeto root se chama `global`.
+
+### 1.5 Programação síncrona e assíncrona
+
+#### Procedimento síncrono
+
+Um procedimento `síncrono` é aquele em que una operação ocorre após o término de outra. Imagine um procedimento que demore dois segundos para ser executado. A linha de código após esse procedimento não será executada até que o procedimento da linha anterior tenha terminado de executar. Esse é o comportamento previsível ao qual já estamos acostumados quando trabalhamos com outras liguagens de programação.
+
+Essa característica `bloqueante` garante que o fluxo de execução seja exatamente na ordem que lemos as linhas de código.
+
+``` JS
+// arquivo síncrono
+
+console.log("1");
+t();
+console.log("3");
+function t() {
+  console.log("2");
+}
+```
+
+A saída no terminal será a ordem natural:
+
+```
+$ node sync.js
+1
+2
+3
+```
+
+#### Procedimento assíncrono
+
+Um procedimento `assíncrono` não bloqueia a execução do código. Se um procedimento levar certo tempo para ser encerrado, a linha após esse procedimento será executada antes de o procedimento assíncrono terminar.
+
+``` JS
+// arquivo assíncrono
+
+console.log("1");
+t();
+console.log("3");
+function t() {
+  setTimeout(function() {
+    console.log("2");
+  }, 10);
+}
+```
+
+A saída no terminal será a ordem natural:
+
+```
+$ node async.js 
+1
+3
+2
+```
+
+No NodeJS é preferível programar nossas rotinas de forma `assíncrona` para não bloquear o main thread. É por isso que todas as funções e os métodos, que fazem algum tipo de acesso a disco ou rede(input ou output), têm como parâmetro uma função callback.
+
+Um `callback é um aviso de que uma operação assíncrona terminou`. É através dele que controlamos o fluxo da nossa aplicação.
+
+``` JS
+// arquivo writeFileSync.js
+
+const fs = require("fs");
+const text = "Star Wars (Brasil: Guerra nas Estrelas /Portugal: Guerra das Estrelas) é uma franquia do tipo space opera estadunidense criada pelo cineasta George Lucas, que conta com uma série de nove filmes de fantasia científica e dois spin-offs.\n";
+
+fs.writeFileSync("sync.txt", text);
+
+const data = fs.readFileSync("sync.txt");
+console.log(data.toString());
+```
+
+Ao executar, no terminal com o comando `node writeFileSync.js`, teremos criado um arquivo `sync.txt`, lido o conteúdo e escrito na saída com o console.log.
+
+```
+$ node writeFileSync.js 
+Star Wars (Brasil: Guerra nas Estrelas /Portugal: Guerra das Estrelas) é uma franquia do tipo space opera estadunidense criada pelo cineasta George Lucas, que conta com uma série de nove filmes de fantasia científica e dois spin-offs.
+```
+
+Utilizando a versão `assíncrona` desses métodos, o código fica assim:
+
+``` JS
+// arquivo writeFileAsync.js
+
+const fs = require("fs");
+const text = "Star Wars (Brasil: Guerra nas Estrelas /Portugal: Guerra das Estrelas) é uma franquia do tipo space opera estadunidense criada pelo cineasta George Lucas, que conta com uma série de nove filmes de fantasia científica e dois spin-offs.\n";
+
+fs.writeFile("async.txt", text, (err, result) => {
+  fs.readFile("async.txt", (err, data) => {
+    console.log(data.toString());
+  });
+});
+```
+
+Tivemos que encaixar `callbacks` para que a leitura do arquivo só acontecesse quando a escrita estivesse finalizada, e aí sim, quando terminar de ler usamos o console.log.
+
+Ao executar, no terminal com o comando `node writeFileAsync.js`, teremos criado um arquivo `async.txt`, lido o conteúdo e escrito na saída com o console.log.
+
+```
+$ node writeFileAsync.js 
+Star Wars (Brasil: Guerra nas Estrelas /Portugal: Guerra das Estrelas) é uma franquia do tipo space opera estadunidense criada pelo cineasta George Lucas, que conta com uma série de nove filmes de fantasia científica e dois spin-offs.
+```
+
+#### 1.5.1 Promises
+
+Uma promise é a representação de uma operação assíncrona. ALgo que ainda não foi completado, mas é esperado que será num futuro. Uma promise (promessa) é algo que pode ou não ser cumprido.
+
+Utilizando corretamente, conseguimos diminuir o nívek de encadeamento, tornando o nosso código mais legível.
+
+Essa é uma das técnicas para evitar p famoso Callback Hell.
+
+Para declarar uma promise, usaremos a função construtora `Promise`
+
+```
+$ node
+> new Promise(function(resolve, reject) {});
+Promise { <pending> }
+```
+
+O retorno é um objeto `promise` que contém os métodos `.then`, `.catch` e `finally()`. 
+Quando a execução tiver algum resultado, o `then()` será invocado (`resolve`). 
+Quando acontecer algum erro, o `.catch` será invocado (`reject`).
+E ambos os casos o `finally()` será invocado, evitando assim a duplicação de código.
+
+Qualquer exceção disparada pela função que gerou a promise ou pelo código dentro do `then()` será capturada pelo metodo `.catch()`, tendo assim um `try/catch` implícito.
+
+Utilizar o `new Promise` no meio do código é um `anti-pattern` e deve ser evitado. Dentro do pacote util do core do nodeJS, temos o método `promisify` que recebe uma função que aceita um callback como último argumento e retorna uma versão que utiliza promise.
+
+Para isso, esse callback deve estar no padrão que o primeiro argumento é o erro `(err, value) => {}`.
+
+O código anterior que escreve um arquivo txt e despois realiza a leitura dele fica dessa forma usando promises:
+
+``` JS
+// arquivo writeFile.js
+
+const fs = require("fs");
+const promisify = require("util",).promisify;
+
+const text = "Star Wars (Brasil: Guerra nas Estrelas /Portugal: Guerra das Estrelas) é uma franquia do tipo space opera estadunidense criada pelo cineasta George Lucas, que conta com uma série de nove filmes de fantasia científica e dois spin-offs.\n";
+
+const writeFileAsync = promisify(fs.writeFile);
+const readFileAsync = promisify(fs.readFile);
+
+writeFileAsync("promise.txt", text)
+  .then(_ => readFileAsync("promise.txt"))
+  .then(data => console.log(data.toString()));
+```
+
+Note que, em comparação com a versão anteriro do código, não temos mais dois níveis de aninhamento, pois estamos retornando uma promise dentro do primeiro `then` e pegando o resultado no mesmo nível da função assíncrona anterior.
+
+No caso específico do módulo `fs`, já existe no core um novo módulo chamado `fs/promise`, removendo a necessidade de usar o `util.promisify`:
+
+``` JS
+// arquivo writeFile-promises.js
+
+const fs = require("fs/promises");
+const text = "Star Wars (Brasil: Guerra nas Estrelas /Portugal: Guerra das Estrelas) é uma franquia do tipo space opera estadunidense criada pelo cineasta George Lucas, que conta com uma série de nove filmes de fantasia científica e dois spin-offs.\n";
+
+fs.writeFile("promise.txt", text)
+  .then(_ => fs.readFile("async-await.txt"))
+  .then(data => console.log(data.toString()));
+```
+
+##### 1.5.2 async/await
+
+Uma outra forma de trabalhar com promises é utilizar as palavras `async/await`. O `async` transforma o retorno de uma função em uma promise.
+
+Vejamos a seguinte função com a palavra `async` no início da declaração:
+
+``` JS
+// arquivo sabre.js
+
+async function sabre() {
+  return "Espada laser";
+}
+
+sabre().then(r => console.log(r));
+```
+
+Executando:
+
+```
+$ node sabre.js
+Espada laser
+```
+
+Para utilizar `await` em "top level", ou seja, fora de uma função, é preciso definir dynamic imports, declarando `type: "modules"` no `package.json`:
+
+``` JSON
+{
+  "name": "livro-nodejs",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "writeFile.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Nathallye Bacelar <nathallye.bacelar@gmail.com>",
+  "license": "ISC",
+}
+```
+
+Ou então, usar arquivos .mjs(module).
+
+Já que a função `sabre`retorna uma `promise`, devido o `async`, podemos usar o `await` para guardar o retorno:
+
+``` JS
+// arquivo sabre.mjs
+
+async function sabre() {
+  return "Espada laser";
+}
+
+const r = await sabre();
+console.log(r);
+```
+
+Executando:
+
+```
+$ node sabre.mjs
+Espada laser
+```
+
+Retornando ao exemplo de código que escreve o arquivo txt, utilizando `async/await`, fica assim:
+
+``` JS
+// arquivo writeFile.js
+
+import fs from "fs/promises";
+const text = "Star Wars (Brasil: Guerra nas Estrelas /Portugal: Guerra das Estrelas) é uma franquia do tipo space opera estadunidense criada pelo cineasta George Lucas, que conta com uma série de nove filmes de fantasia científica e dois spin-offs.\n";
+
+await fs.writeFile("async-await.txt", text);
+const data = await fs.readFile("async-await.txt");
+
+console.log(data.toString());
+```
+
+Não foi necessário usar callbacks nem encaixar `.then`. Também tivemos que mudar o `require` por `import`, utilizando o dynamic imports, por ter habilitado o uso de módulos no `package.json`, e então ser possível utilizar top level `await`.
