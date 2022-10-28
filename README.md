@@ -410,3 +410,142 @@ console.log(data.toString());
 ```
 
 Não foi necessário usar callbacks nem encaixar `.then`. Também tivemos que mudar o `require` por `import`, utilizando o dynamic imports, por ter habilitado o uso de módulos no `package.json`, e então ser possível utilizar top level `await`.
+
+## Anotações Capítulo 2
+
+### 2.1 Primeiro Programa
+
+Vamos criar um programa chamado `hello.js` com o conteúdo seguinte:
+
+``` JS
+process.stdout.write("Han Solo\n");
+```
+
+Vamos executar no terminar(no diretório do arquivo):
+
+``` 
+$ node hello.js 
+Han Solo
+```
+
+Geralmente, as ferramentas de linha de comando recebem opções após o comando, algo como:
+
+```
+node hello2.js status port 42
+```
+
+Conseguimos ler esses argumentos por meio do array `process.argv`.
+
+Para entendermos melhor, vamos criar o arquivo `args.js` com o conteúdo seguinte:
+
+``` JS
+process.argv.forEach(arg => console.log(arg))
+```
+
+E executar no terminal:
+
+```
+$ node args.js status port 42
+/usr/local/bin/node
+/home/nathallye/dev/livros/livro-nodejs/chapter-02/args.js
+status
+port
+42
+```
+
+A primeira linha do retorno é o comando que utilizamos para executar o programa; a próxima linha é o caminho completo até o nosso arquivo; e as demais são os argumentos passados.
+
+A função `console.log()` internamente faz uma chamada à função `process.stdout.write()`.
+
+#### Consumindo a API loremipsum.net
+
+Essa API retorna certa quantidade de texto `lorem ipsum`. Esse texto é uma peça clássica em latim que a indústria gráfica, a web e a editoração utilizam para preencher espaços antes de o conteúdo final.
+
+O nosso programa fará uma requisição nessa API e criará um arquivo `.html` com o conteúdo retornado. Para fazer a requisição, utilizaremos o módulos `http` nativo do NodeJS.
+
+A primeira tarefa é informar que usaremos os módulos `http` e `fs`. Para isso utilizaremos a função `require()`, atribuindo o módulo a uma constante(variável que não pode ser reatribuída):
+
+``` JS
+const http = require("http"); // atribui o módulo http a const http
+const fs = require("fs"); // atribui o módulo fs a const fs
+```
+
+Em seguida, podemos usar esses módulos e consumir a API:
+
+``` JS 
+const http = require("http"); // atribui o módulo http a const http
+const fs = require("fs"); // atribui o módulo fs a const fs
+
+const fileName = String(process.argv[2] || "").replace(/[^a-z0-9\.]/gi, ""); // regex para formatar o argumento(nome do arquivo)
+const quantityOfParagraphs = String(process.argv[3] || "").replace(/[^\d]/g, "");// regex para formatar o argumento(quant. paragráfos)
+const USAGE = "USO: node loremipsum.js {nomeArquivo} {quantidadeParágrafos}"; 
+
+if (!fileName || !quantityOfParagraphs) { // se não for passado nenhum argumento será undefined(que é false) por isso, ! tornará true se for false
+  return console.log(USAGE); // se um for dos argumentos for false(que será true), força a saída exibindo no console o texto que está em USAGE
+}
+http.get("http://loripsum.net/api/" + quantityOfParagraphs, (res) => {
+  let text = "";
+  res.on("data", (chunk) => {
+    text += chunk;
+  });
+  res.on("end", () => {
+    fs.writeFile(fileName, text, () => {
+      console.log("Arquivo " + fileName + " pronto!");
+    });
+  });
+})
+.on("error", (e) => {
+  console.log("Got error: " + e.message);
+});
+```
+
+### 2.2 Debug
+
+Um pequeno utilitário de depuração de JavaScript modelado após a técnica de depuração do núcleo Node.js. Funciona em Node.js e navegadores da web.
+
+`debug` expõe uma função; simplesmente passe a esta função o nome do seu módulo, e ela retornará uma versão decorada `console.error` para você passar instruções de depuração. Isso permitirá que você alterne a saída de depuração para diferentes partes do seu módulo, bem como para o módulo como um todo.
+
+Instalação:
+
+```
+npm i debug --save
+```
+
+Em seguida, devemos informa que usaremos o módulo `debug` no projeto. Para isso utilizaremos a função `require()`, atribuindo o módulo a uma constante:
+
+``` JS
+const debug = require("debug");
+```
+
+Depois, podemos utilizar da mesma forma que seria com o `console.log`:
+
+``` JS
+const debug = require("debug");
+
+debug("Hi");
+```
+
+Em seguida, devemos criar a variável de ambiente `DEBUG`:
+
+```
+$ export DEBUG=*
+```
+
+Obs.: O `*` informa que queremos que ele mostre tudo.
+
+Nesse caso, veremos o debug de outros módulos npm, e não apenas os nossos. Porém, se estivermos interessados apenas no debug da nossa aplicação, devemos declarar a variável de ambiente desta outra forma:
+
+```
+$ export DEBUG=livro_nodejs:*
+               [namespace]
+```
+
+No caso, `livro_nodejs` é um namespace que podemos declarar no momento do require:
+
+``` JS
+const debug = require("debug")("livro_nodejs");
+```
+
+### 2.3 TCP
+
+
