@@ -778,3 +778,12 @@ A função `require` que utilizamos para disponibilizar o módulo `http` no prog
 
 Utilizamos a coleção `Map`, para melhorar a manutenilidade e legibilidade do código.
 
+### 2.6 Express Generator
+
+O módulo Express Generator cria uma estrutura inicial bem bacana para começar projetos. Vamos executar o módulo `express-generator` com o `npx`:
+
+```
+npx express-generator
+```
+
+
