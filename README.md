@@ -508,7 +508,7 @@ Um pequeno utilitário de depuração de JavaScript modelado após a técnica de
 Instalação:
 
 ```
-npm i debug --save
+$ npm i debug --save
 ```
 
 Em seguida, devemos informa que usaremos o módulo `debug` no projeto. Para isso utilizaremos a função `require()`, atribuindo o módulo a uma constante:
@@ -548,4 +548,233 @@ const debug = require("debug")("livro_nodejs");
 
 ### 2.3 TCP
 
+O TCP ou Protocolo de Controle de Transmissão é um dos protocolos de comunicação de rede de computadores.
+
+Uma característica muito importante de uma ferramenta de linha de comando é que, após ter sido executada o processo devolve o cursor do terminal ao usuário, para que ele possa continuar trabalhando, digitando outros comnados ou invocando novamente a ferramenta.
+
+No caso de servidores, não acontece isso. O processo não pode simplesmente fechar. Ele precisa continuar aberto, aguardando conexões, para poder responder o que for solicitado.
+
+Para entendermos melhor, vamos instalar o TCP telnet via brew:
+
+```
+$ brew install telnet
+```
+
+Vamos construir um pequeno e simples chat TCP com NodeJS, utilizando o módulo `net` nativo do core da plataforma.
+
+``` JS
+const net = require("net");
+const chatServer  = net.createServer(); // criação do servidor
+const clientList  = []; // variável para lista de usuários conectados
+```
+
+Criamos um servidor com a função `net.createServer()` e uma variável para conter a lista de usuários conectados `clientList`.
+
+``` JS
+const net = require("net");
+const chatServer = net.createServer(); 
+const clientList = []; 
+
+const broadcast = (message, client) => { // broadcast irá enviar o que for digitado por um usuário aos demais conectados
+  clientList
+    .filter(item => item !== client) // filter para não duplicar a mensagem para quem acabou de enviar
+    .forEach(item => item.write(message)) // escreve a mensagem
+};
+```
+
+Depois declaramos a função `broadcast` que será responsável por enviar o que for digitado por qualquer usuário aos demais que também estão conectados. Utilizamos o método `filter` para não duplicar a mensagem para quem acabou de enviar.
+
+``` JS
+const net = require("net");
+const chatServer = net.createServer();
+const clientList = [];
+
+const broadcast = (message, client) => {
+  clientList
+    .filter(item => item !== client)
+    .forEach(item => item.write(message))
+};
+
+chatServer.on("connection", (client) => { // quando o usuário conectar, o evento on vai ser disparado
+  client.write("Hi guest" + "!\n"); // escrevendo uma mensagem e pulando uma linha
+  // [...]
+});
+```
+
+Agora definimos o que irá acontecer quando um usuário conectar, ou seja, se o evento `chatServer.on("connection")` for disparado. Estamos escrevendo uma mensagem e pulando uma linha com `/n`.
+
+``` JS
+const net = require("net");
+const chatServer = net.createServer();
+const clientList = [];
+
+const broadcast = (message, client) => {
+  clientList
+    .filter(item => item !== client)
+    .forEach(item => item.write(message))
+};
+
+chatServer.on("connection", (client) => {
+  client.write("Hi guest" + "!\n");
+  clientList.push(client);
+  client.on("data", (data) => broadcast(data, client));
+  client.on("end", () => {
+    console.log("client end", clientList.indexOf(client))
+    clientList.splice(clientList.indexOf(client), 1) // removendo o usuário que desconectou do array clientList
+  });
+  client.on("error", (err) => console.log(err));
+});
+```
+
+Quando um usuário digitar algo, logo o evento `on("data")` será disparado, podemos cjamar a função `brodcast` para transmitir para todos que estiverem conectados.
+
+Sempre que um novo usuário `client` conecta, aguardamos uma referência dele no array `clientList`; caso ele desconecte, ou seja, quando o evento `on("end")` for recebido pelo servidor tcp, temos que removê-lo.
+
+``` JS
+// arquivo chat-tcp.js
+
+const net = require("net");
+const chatServer = net.createServer();
+const clientList = [];
+
+const broadcast = (message, client) => {
+  clientList
+    .filter(item => item !== client)
+    .forEach(item => item.write(message))
+};
+
+chatServer.on("connection", (client) => {
+  client.write("Hi guest" + "!\n");
+  clientList.push(client);
+  client.on("data", (data) => broadcast(data, client));
+  client.on("end", () => {
+    console.log("client end", clientList.indexOf(client))
+    clientList.splice(clientList.indexOf(client), 1)
+  });
+  client.on("error", (err) => console.log(err));
+});
+
+chatServer.listen(9000);
+```
+
+Por fim, podemos informar ao nosso serviodr TCP para escutar;/ouvir(`listen`) as conexões na porta `9000`.
+
+Para iniciar o nosso servidor TCP, utilizaremos o comando `node` seguido pelo nome do arquivo(ou o caminho), em uma janela do terminal:
+
+``` 
+$ node chat-tcp.js
+```
+
+Podemos notar que o cursor no terminal ficará aberto, em estado de espera. Isso ocorre porque abrimos um processo que é um `ouvinte`, aguardando que novos clientes se conectem a ele.
+
+Para conversar nesse chat, basta conectar no IP de rede da máquina que está com o programa do servidor em execução, na porta 9000, como definimos no código. Em outra aba do terminal, iremos nos conectar como cliente, com o comando `telnet`:
+
+```
+$ telnet localhost 9000
+Trying ::1...
+Connected to localhost.
+Escape character is '^]'.
+Hi guest!
+```
+
+Alguém que estiver na mesma rede local poderá se conectar a esse servidor informando o IP da máquina que está rodando.
+
+### 2.4 Criando um servidor HTTP
+
+Bem parecido com o chat TCP, um servidor HTTP também é um processo que fica aberto aguardando conexões. 
+Utilizaremos o módulo `http` do core do NodeJS para construir um simples servidor HTTP.
+
+``` JS
+const http = require("http");
+
+const server = http.createServer((request, response) => {
+  // [...]
+});
+```
+
+Importamos o módulo `http` e criamos o servidor `http.createServer()`.
+
+``` JS
+const http = require("http");
+
+const server = http.createServer((request, response) => {
+  response.writeHead(200, {"Content-Type": "text/plain"});
+  response.end("Open the blast doors!\n");
+});
+```
+
+Em seguida, escrevemos um cabeçalho com o status code 200, o content type de texto, e a string "Open the blast doors!\n".
+
+``` JS
+const http = require("http");
+
+const server = http.createServer((request, response) => {
+  response.writeHead(200, {"Content-Type": "text/plain"});
+  response.end("Open the blast doors!\n");
+});
+
+server.listen(1337);
+```
+
+Feito isso, colocamos o método `listen` na porta 1337, e está pronto nosso Hello World em NodeJS.
+
+``` JS
+// arquivo server-http.js
+
+const http = require("http");
+
+const server = http.createServer((request, response) => {
+  response.writeHead(200, {"Content-Type": "text/plain"});
+  response.end("Open the blast doors!\n");
+});
+
+server.listen(1337, "127.0.0.1", () => {
+  console.log("Server running at http://127.0.0.1:1337/");
+});
+```
+server-http.js identificarmos que deu tudo certo.
+
+Iniciamos o servidor pelo terminal:
+
+```
+$ node server-http.js
+Server running at http://127.0.0.1:1337/
+```
+
+Depois, abrindo um navegador e visitando o endereço http://127.0.0.1:1337(ou http://localhost:1337), veremos a frase "Open the blast doors!" na página.
+
+Podemos notar que, assim como o chat, fizemos o `require` de um módulo, criamos um servidor com a função `createServer()` e delegamos a uma porta um `listen`. Foi a porta 9000 no TCP e agora a porta 1337 no HTTP, mas poderia ser qualquer outro número acima de `1024`, que ainda não estivesse em uso.
+
+#### 2.4.1 Outros endpoints
+
+Os dois parâmetros da função `createServer()` são os objetos `request` e `response, que representam uma requisição HTTP e consistem sempre em um pedido e uma resposta, respectivamente.
+
+O truque para responder a mais de uma requisiçaõ está em identificar o que foi solicitado e estão escrever algo diferente na tela. Para isso, podemos dar uma olhada na propriedade `url` do objeto `request`.
+
+``` JS
+const http = require("http");
+const routes = new Map();
+
+routes.set("/", (request, response) => response.end("Open the blast doors!\n"));
+routes.set("/close", (request, response) => response.end("Close the blast doors!\n"));
+
+const server = http.createServer((request, response) => {
+  response.writeHead(200, {"Content-Type": "text/plain"});
+  if (!routes.has(request.url)) {
+    return response.end("No doors!\n")
+  }
+  return routes.get(request.url)(request, response)
+});
+
+server.listen(1337, "127.0.0.1", () => {
+  console.log("Server running at http://127.0.0.1:1337/");
+});
+```
+
+Agora, ao acessar pelo navegador http://localhost:1337, vemos a frase "Open the blast doors!" e ao acessar http://localhost:1337/close aparece a frase "Close the blast doors!" e ao tentar qualquer outra rota aparece a frase "No doors!".
+
+
+A função `require` que utilizamos para disponibilizar o módulo `http` no programa é uma das poucas funções síncronas do NodeJs. Outra coisa importante a notar é que o require é cacheado, então não importa quantas vezes você faça require do mesmo módulo, core do NodeJS só vai fato acessar o disco uma vez; portanto, tenho cuidado ao tentar alterar algo importado com require, pois estará alterando a referência do módulo na sua aplicação como um todo.
+
+Utilizamos a coleção `Map`, para melhorar a manutenilidade e legibilidade do código.
 
