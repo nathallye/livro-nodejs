@@ -786,4 +786,371 @@ O módulo Express Generator cria uma estrutura inicial bem bacana para começar 
 npx express-generator
 ```
 
+### 2.7 Método process.nextTick
 
+Entender como o Node JS funciona e por que é tão importante programar tudo de forma assíncrona também é um passo muito importante para colocar a aplicação no ar.
+
+Rotinas síncronas são bloqueantes, pois ocupam o processador até estarem finalizadas. Como o Node é `single-thread`, se o processo estiver ocupado realizando alguma rotina síncrona muito demorada, então sua APO ficará incapaz de responder a novas requisições até que a rotina termine. Em outras palavras, qualquer coisa que bloquear o `Event Loop` irá bloquear tudo.
+
+Por esse motivo, o NodeJS não é uma boa escolha para trabalhos que envolvam processamento pesado, como tratamento de imagens, parser de arquivos gigantes etc. 
+Desde que este não seja o principal intuito da aplicação, se estivermos escrevendo uma ferramenta de linha de comando que redimensione imagens, então tudo bem; mas, se estivermos escrevendo uma API que deve responder a milhares de requisições simultâneas, então fazer o NodeJS responder a essas requisições e redimensionar imagens ao mesmo tempo talvez não seja uma boa ideia.
+
+Em uma situação assim, o ideal seria fazer o NodeJS delegar o trabalho pesado de CPU para outra rotina, talvez escrita até em outra linguagem, que poderia ter melhor desempenho em uma situação dessas e deixaria o NodeJS como o maestro, transferindo para o `Event Loop` a espera do término do processamento, sem bloqueio.
+
+Quando precisamos de algo assim no meio do código, como uma função recursiva, podemos utilizar o método `process.nextTick()`. Esse método adia a execução de uma função principal para o próximo ciclo do `Event Loop`, liberando assim o processo principal para receber novas requisições e enfileirá-las para execução.
+
+Em vez de usarmos:
+
+``` JS
+const recursiveCompute = function() {
+  // [...]
+  recursiveCompute();
+}
+```
+
+Podemos usar:
+
+``` JS
+const recursiveCompute = function() {
+  // [...]
+  process.nextTick(recursiveCompute);
+};
+recursiveCompute();
+```
+
+### 2.8 Star Wars API 
+
+Usaremos a Star Wars API para escrever um programa que, quando invocado, realiza diversas requisições HTTP, interpola o retorno em um template markdown e escreve o resultado em um arquivo `.html`.
+
+Olhando o contrato da API:
+
+```
+$ curl -i "https://swapi.dev/api/people"
+HTTP/2 200 
+server: nginx/1.16.1
+date: Sun, 30 Oct 2022 22:29:47 GMT
+content-type: application/json
+vary: Accept, Cookie
+x-frame-options: SAMEORIGIN
+etag: "b493126da505af6fec015ec116fec193"
+allow: GET, HEAD, OPTIONS
+strict-transport-security: max-age=15768000
+
+{"count":82,
+"next":"https://swapi.dev/api/people/?page=2",
+"previous":null,
+"results":[
+  {"name":"Luke Skywalker", ...
+```
+
+Podemos notar que ela possui uma paginação de dez em dez, e no total 82 pessoas cadastradas.
+
+Para não usar o módulo http diretamente, iremos instalar o Axios:
+
+```
+$ npm init -y
+$ npm i --save axios
+```
+
+O axios abstrai a interface de uso de modulo http, deixando nosso código mais expressivo e conciso.
+
+O programa mais simples para a requisição fica:
+
+``` JS
+const axios = require("axios");
+
+axios.get("https://swapi.dev/api/people/")
+  .then(result => {
+    console.log(result.data);
+  })
+  .then(result => {
+    process.exit()
+  });
+```
+
+Testando nosso programa:
+
+``` bash
+$ node index.js 
+{
+  count: 82,
+  next: 'https://swapi.dev/api/people/?page=2',
+  previous: null,
+  results: [
+    {
+      name: 'Luke Skywalker',
+      height: '172',
+      mass: '77',
+      hair_color: 'blond',
+      skin_color: 'fair',
+      eye_color: 'blue',
+      birth_year: '19BBY',
+      gender: 'male',
+      homeworld: 'https://swapi.dev/api/planets/1/',
+      films: [Array],
+      species: [],
+      vehicles: [Array],
+      starships: [Array],
+      created: '2014-12-09T13:50:51.644000Z',
+      edited: '2014-12-20T21:17:56.891000Z',
+      url: 'https://swapi.dev/api/people/1/'
+    }, ...
+```
+
+Queremos gerar o markdown a seguir:
+
+```
+# Star Wars API
+
+Tem 82 pessoas
+Name           | Height | Mass | Hair Color | Skin Color | Eye Color | Birth Year | Gender |
+---------------|--------|------|------------|------------|-----------|------------|--------|
+Luke Skywalker | 172    | 77   | Blond      | Fair       | Blue      | 19BBY      | male   |
+```
+
+Precisamos de um template engine para fazer interpolação das variáveis com o markdown, para isso usaremos uma feature das template strings.
+
+``` JS
+const axios = require("axios");
+const fs = require("fs/promises");
+const marked = require("marked");
+
+const engine = (template, ...data) => {
+  return template.map((s, i) => s + `${data[i] || ""}`).join("")
+};
+
+const render = result => {
+  const title = "Star Wars API";
+  const count = result.count;
+  const items = result.results;
+
+  const markdown = engine`
+# ${title}
+Tem ${count} pessoas
+Name           | Height | Mass | Hair Color | Skin Color | Eye Color | Birth Year | Gender |
+---------------|--------|------|------------|------------|-----------|------------|--------|
+${items.map(item => {
+  return [
+    item.name,
+    item.height,
+    item.mass,
+    item.hair_color,
+    item.skin_color,
+    item.eye_color,
+    item.birth_year,
+    item.gender,
+    ""
+  ].join("|")
+}).join("\n")}
+`
+  return marked(markdown);
+}
+
+axios.get(`https://swapi.dev/api/people`)
+  .then(render)
+  .then(_ => process.exit());
+```
+
+A função `engine` fará toda a mágica de que precisamos ao passar uma template string para ela. É importante não ter tabulação à esquerda na declaração do template, para não interferir no markdown final gerado.
+
+Com o módulo `marked`(devemos instalar essa dependência no projeto com o comando `npm i --save marked`) convertemos o markdown em HTML.
+
+O resultado é:
+
+``` 
+$ node index.js
+<h1 id="star-wars-api">Star Wars API</h1>
+<p>Tem 82 pessoas</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Height</th>
+<th>Mass</th>
+<th>Hair Color</th>
+<th>Skin Color</th>
+<th>Eye Color</th>
+<th>Birth Year</th>
+<th>Gender</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Luke Skywalker</td>
+<td>172</td>
+...
+```
+
+Com essa etapa pronta, vamos nos concentrar em realizar a paginação para ler todos os dados. Como não queremos causar impactos na Star Wars API, vamos fazer uma requisição de cada vez, para isso usaremos generators.
+
+``` JS
+const axios = require("axios");
+const fs = require("fs/promises");
+const marked = require("marked");
+
+const engine = (template, ...data) => {
+  return template.map((s, i) => s + `${data[i] || ""}`).join("")
+};
+
+const render = result => {
+  const title = "Star Wars API";
+  const count = result.count;
+  const items = result.results;
+
+  const markdown = engine`
+# ${title}
+Tem ${count} pessoas
+Name           | Height | Mass | Hair Color | Skin Color | Eye Color | Birth Year | Gender |
+---------------|--------|------|------------|------------|-----------|------------|--------|
+${items.map(item => {
+  return [
+    item.name,
+    item.height,
+    item.mass,
+    item.hair_color,
+    item.skin_color,
+    item.eye_color,
+    item.birth_year,
+    item.gender,
+    ""
+  ].join("|")
+}).join("\n")}
+`
+  return marked(markdown);
+}
+
+async function* paginate() {
+  let page = 1;
+  let result;
+  while (!result || result.status === 200) {
+    try {
+      result = await axios.get(`https://swapi.dev/api/people/?page=${page}`)
+      page++
+      yield result;
+    } catch (e) {
+      return e;
+    }
+  }
+}
+
+const getData = async () => {
+  let results = [];
+  for await (const response of paginate()) {
+    results = results.concat(response.data.results);
+  }
+
+  return {
+    count: results.length,
+    results
+  }
+}
+```
+
+A função `paginate()` faz requisições de página em página enquanto o status code retornado for 200. Cada requisição devolve dez pessoas, e são 82 no total, logo temos nove páginas; ao tentar fazer um request para a décima página, recebemos um 404 de retorno e, nesse momento, sabemos que acabamos de recuperar todas as pessoas.
+
+A função `getData` usa o `for await` para aguardar um retorno por vez, concatena os dados em um array e envia para a função `render` todas as 82 pessoas.
+
+O código final fica assim:
+
+``` JS
+const axios = require("axios");
+const fs = require("fs/promises");
+const marked = require("marked");
+
+const engine = (template, ...data) => {
+  return template.map((s, i) => s + `${data[i] || ""}`).join("")
+};
+
+const render = result => {
+  const title = "Star Wars API";
+  const count = result.count;
+  const items = result.results;
+
+  const markdown = engine`
+# ${title}
+Tem ${count} pessoas
+Name           | Height | Mass | Hair Color | Skin Color | Eye Color | Birth Year | Gender |
+---------------|--------|------|------------|------------|-----------|------------|--------|
+${items.map(item => {
+  return [
+    item.name,
+    item.height,
+    item.mass,
+    item.hair_color,
+    item.skin_color,
+    item.eye_color,
+    item.birth_year,
+    item.gender,
+    ""
+  ].join("|")
+}).join("\n")}
+`
+  return marked(markdown);
+}
+
+async function* paginate() {
+  let page = 1;
+  let result;
+  while (!result || result.status === 200) {
+    try {
+      result = await axios.get(`https://swapi.dev/api/people/?page=${page}`)
+      page++
+      yield result;
+    } catch (e) {
+      return e;
+    }
+  }
+}
+
+const getData = async () => {
+  let results = [];
+  for await (const response of paginate()) {
+    results = results.concat(response.data.results);
+  }
+
+  return {
+    count: results.length,
+    results
+  }
+}
+
+getData()
+  .then(render)
+  .then(result => fs.writeFile("people.html", result))
+  .then(_ => process.exit());
+```
+
+Ao executar, termos um arquivo `people.html` com todas as pessoas da API.
+
+## Anotações Capítulo 3
+
+- **REST (Representational State Transfer - Transferência de Estado Representacional):**
+
+É um design de arquitetura para troca de informações entre aplicações pela rede. Esse termo foi definido no ano de 2000 por Roy Fielding, que também havia sido um dos autores da especificação do protocolo HTTP. 
+Utilizamos REST para desenvolver no protocolo HTTP e, quando  seguimos as restrições descritas pela especificação, podemos dizer que fizemos um web service RESTful.
+
+Um web service é uma solução de integração e comunicação entre aplicações diferentes através da internet. Essa arquitetura permite que sistemas disponibilizem, com segurança, dados para outros consumidores. 
+São preceitos que um web service deve garantir autenticidade, privacidade e integridade. Grosso modo, é uma forma de permitir que outras aplicações façam queries no seu BD, mas apenas as que você permitir e se aquele cliente tiver permissão de acesso suficiente para poder realizar essa operação.
+
+Uma API(Application Public Interface) é a interface que expomos ao mundo. É a forma de deixar que outras aplicações manipulem a nossa aplicação, os nossos dados, seja editando ou apenas filtrando alguma informação.
+
+Vamos juntar todos esses conceitos e construit uma web service com uma API RESTful.
+
+Para construir uma boa API, precisamos entender cada uma das partes e planejar um design que faça sentido para os nossos clientes.
+
+Na web, um web service que trafega informações via HTTP é composto basicamente por duas partes a `requisição` e a `resposta`.
+
+### 3.2 Estrutura da requisição
+
+Uma requisição é um `pedido` que fazemos a um web service. O protocolo HTTP é baseado em pedido e resposta. Quando um navegador acessa um site, ele está pedindo um conteúdo para o servidor daquele site. Esse pedido que vem em forma de HTML é a resposta do servidor.
+
+Atualmente, utilizamos o protocolo HTTP 1.1. Nele temos que uma requisição gera uma resposta. Porém, essa requisição pode ser bem detalhada e especificar muitas coisas, como qual tipo de mídia queremos como retorno, quais tipos de dados e em qual quantidade etc.
+
+Estrutura de uma requisição:
+
+- **Endpoint:** é o URL, um endereço web. Exemplo: `https://site.com.br/livros`; 
+- **Query:** é a query string na URI. Exemplo: `?param=value&param2=value2`;
+- **Recurso:** é um caminho. Exemplo: na URI `https://site.com.br/livros` a palavra `livros` é um recurso;
+- **Parâmetros:** são variáveis enviadas na URI. Exemplo: na URI `https://site.com.br/livros/1` o número `1` é o parâmetro;
+- **Cabeçalho:** são dados adicionais enviados na requisição. Exemplo: tipo de mídia que aceitamos como retorno, toke para autenticação, cookies etc.;
+- **Método:** é o tipo de requisição, chamado também de verbo. Os métodos existentes no HTTP são: OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE, TRACE e CONNECT;
+- **Dado:** é o corpo da requisição. Exemplo: quando enviamos um formulário via POST, os dados nos inputs são o corpo da requisição. 
