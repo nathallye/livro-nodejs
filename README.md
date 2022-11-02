@@ -1428,3 +1428,143 @@ Esta condição permite que o cliente possa executar algum código sob demanda, 
 
 Como este item não faz parte da arquitetura em si, ele é considerado opcional. Ele pode ser utilizado quando executar alguma parte do serviço do lado do cliente for mais eficaz ou rápida.
 
+## Anotações Capítulo 4
+
+### 4.1 Banco de dados - Postgres
+
+PostgreSQL é um sistema gerenciador de banco de dados objeto relacional, desenvolvido como projeto de código aberto.
+
+#### 4.1.1 Modelagem
+
+- Acessando o postgres via terminal: 
+
+```
+$ psql -d postgress
+```
+
+- Criando banco de dados: 
+
+``` SQL
+postgres=# create database livro_nodejs;
+                           [name-database]
+```
+
+- Acessando o banco de dados: 
+
+```
+postgres=# \c livro_nodejs
+              [name-database]
+```
+
+- Criando as tabelas:
+
+``` SQL
+CREATE TABLE patents (
+	id serial PRIMARY KEY,
+	name TEXT NOT NULL
+);
+
+CREATE TABLE divisions (
+	id serial PRIMARY KEY,
+	name TEXT NOT NULL
+);
+
+CREATE TABLE stormtroopers (
+	id serial PRIMARY KEY,
+	name TEXT NOT NULL,
+	nickname TEXT NOT NULL,
+	id_parent INT NOT NULL,
+	FOREIGN KEY (id_patent) REFERENCES patents(id)
+);
+
+CREATE TABLE stormtrooper_division (
+	id_stormtrooper INT NOT NULL,
+	id_division INT NOT NULL,
+	FOREIGN KEY (id_stormtrooper) REFERENCES stormtroopers(id),
+	FOREIGN KEY (id_division) REFERENCES divisions(id)
+);
+```
+
+- Listando as tabelas: 
+
+Comando
+```
+livro_nodejs=# \dt
+[name-database]
+```
+
+Retorno
+```
+Schema |         Name          | Type  |   Owner   
+--------+-----------------------+-------+-----------
+ public | divisions             | table | nathallye
+ public | patents               | table | nathallye
+ public | stormtrooper_division | table | nathallye
+ public | stormtroopers         | table | nathallye
+(4 rows)
+```
+
+- Excluindo uma tabela: 
+
+``` SQL
+livro_nodejs=# DROP TABLE divisions;
+[database-name]           [table-name]
+```
+
+- Visualizando itens de tabela: 
+
+Comando
+```
+livro_nodejs=# \d stormtroopers
+[database-name]   [table-name]
+```
+
+Retorno
+```
+  Column   |  Type   | Collation | Nullable |                  Default                  
+-----------+---------+-----------+----------+-------------------------------------------
+ id        | integer |           | not null | nextval('stormtroopers_id_seq'::regclass)
+ name      | text    |           | not null | 
+ nickname  | text    |           | not null | 
+ id_patent | integer |           | not null | 
+
+Indexes:
+    "stormtroopers_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "stormtroopers_id_parent_fkey" FOREIGN KEY (id_parent) REFERENCES patents(id)
+Referenced by:
+    TABLE "stormtrooper_division" CONSTRAINT "stormtrooper_division_id_stormtrooper_fkey" FOREIGN KEY (id_stormtrooper) REFERENCES stormtroopers(id)
+```
+
+##### Relacionamento 1:N
+
+Cada soldado(`stormtroopers`) tem uma patente, então temos um relacionamento 1 para n. Por isso, criamos a tabela `patents` e iremos cadastrar as possíveis patentes, feito isso, podemos inserir um soldado na tabela `stormtroopers`.
+
+- Inserindo dados nas tabelas:
+
+``` SQL
+            [table-name]
+INSERT INTO patents (name) VALUES ('Soldier'), ('Commander'), ('Captain'), ('Lieutenant'), ('Sergent');
+                    [column-name]
+```
+
+``` SQL
+            [table-name]
+INSERT INTO stormtroopers (name, nickname, id_patent) VALUES ('CC-1010', 'Fox', 2);
+                                 [columns-name]                     [values]
+```
+
+- Visualizando as informações cadastradas:
+
+Comando
+``` SQL
+livro_nodejs=# SELECT stormtroopers.id, stormtroopers.name, nickname, patents.name FROM stormtroopers INNER JOIN patents ON patents.id = stormtroopers.id_patent;
+```
+
+Retorno
+```
+ id |  name   | nickname |   name    
+----+---------+----------+-----------
+  1 | CC-1010 | Fox      | Commander
+(1 row)
+```

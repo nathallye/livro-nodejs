@@ -1,0 +1,31 @@
+CREATE TABLE patents (
+	id serial PRIMARY KEY,
+	name TEXT NOT NULL
+);
+
+CREATE TABLE divisions (
+	id serial PRIMARY KEY,
+	name TEXT NOT NULL
+);
+
+CREATE TABLE stormtroopers (
+	id serial PRIMARY KEY,
+	name TEXT NOT NULL,
+	nickname TEXT NOT NULL,
+	id_parent INT NOT NULL,
+	FOREIGN KEY (id_parent) REFERENCES patents(id)
+);
+
+CREATE TABLE stormtrooper_division (
+	id_stormtrooper INT NOT NULL,
+	id_division INT NOT NULL,
+	FOREIGN KEY (id_stormtrooper) REFERENCES stormtroopers(id),
+	FOREIGN KEY (id_division) REFERENCES divisions(id)
+);
+
+
+INSERT INTO patents (name) VALUES ('Soldier'), ('Commander'), ('Captain'), ('Lieutenant'), ('Sergent');
+
+INSERT INTO stormtroopers (name, nickname, id_parent) VALUES ('CC-1010', 'Fox', 2);
+
+SELECT stormtroopers.id, stormtroopers.name, nickname, patents.name FROM stormtroopers INNER JOIN patents ON patents.id = stormtroopers.id_parent;
