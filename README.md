@@ -1449,6 +1449,12 @@ postgres=# create database livro_nodejs;
                            [name-database]
 ```
 
+- Listando banco de dados existentes no postgres:
+
+``` 
+postgres=# \l
+```
+
 - Acessando o banco de dados: 
 
 ```
@@ -1473,7 +1479,7 @@ CREATE TABLE stormtroopers (
 	id serial PRIMARY KEY,
 	name TEXT NOT NULL,
 	nickname TEXT NOT NULL,
-	id_parent INT NOT NULL,
+	id_patent INT NOT NULL,
 	FOREIGN KEY (id_patent) REFERENCES patents(id)
 );
 
@@ -1511,7 +1517,11 @@ livro_nodejs=# DROP TABLE divisions;
 [database-name]           [table-name]
 ```
 
-- Visualizando itens de tabela: 
+##### Relacionamento 1:N
+
+Cada soldado tem uma patente, então temos um relacionamento 1 para n. Onde cada soldado/`stormtrooper` tem uma patente/`patent` e cada patente/`patent` pode ter n soldados/`stormtroopers` Por isso, criamos a tabela `patents` e iremos cadastrar as possíveis patentes, feito isso, podemos inserir um soldado na tabela `stormtroopers`.
+
+- Visualizando itens de uma tabela tabela: 
 
 Comando
 ```
@@ -1531,22 +1541,20 @@ Retorno
 Indexes:
     "stormtroopers_pkey" PRIMARY KEY, btree (id)
 Foreign-key constraints:
-    "stormtroopers_id_parent_fkey" FOREIGN KEY (id_parent) REFERENCES patents(id)
+    "stormtroopers_id_patent_fkey" FOREIGN KEY (id_patent) REFERENCES patents(id)
 Referenced by:
     TABLE "stormtrooper_division" CONSTRAINT "stormtrooper_division_id_stormtrooper_fkey" FOREIGN KEY (id_stormtrooper) REFERENCES stormtroopers(id)
 ```
 
-##### Relacionamento 1:N
-
-Cada soldado(`stormtroopers`) tem uma patente, então temos um relacionamento 1 para n. Por isso, criamos a tabela `patents` e iremos cadastrar as possíveis patentes, feito isso, podemos inserir um soldado na tabela `stormtroopers`.
-
-- Inserindo dados nas tabelas:
+- Inserindo dados nas tabelas(inserindo patentes):
 
 ``` SQL
             [table-name]
 INSERT INTO patents (name) VALUES ('Soldier'), ('Commander'), ('Captain'), ('Lieutenant'), ('Sergent');
                     [column-name]
 ```
+
+- Inserindo dados nas tabelas(inserindo soldado com uma divisão):
 
 ``` SQL
             [table-name]
@@ -1567,4 +1575,149 @@ Retorno
 ----+---------+----------+-----------
   1 | CC-1010 | Fox      | Commander
 (1 row)
+```
+
+##### Relacionamento N:N
+
+Um soldado pode pertencer a mais de uma divisão, por isso precisamos de um relacionamento n para n, em que cada soldado/`stormtrooper` tem n divisões/`divisions` e cada divisão/`division` tem n soldados/`stormtroopers`. 
+
+
+- Inserindo dados nas tabelas(inserindo divisões):
+
+``` SQL
+INSERT INTO divisions (name) VALUES ('Breakout Squad'), ('501st Legion'), ('35th Infantry'), ('212th Attck Battalion'), ('Squad Seven'), ('44th Special Operations Division'), ('Lightning Squadron'), ('Coruscant Guard');
+```
+
+- Para fazer o relacionamento n:n é necessário uma tabela de relacionamento, nesse caso ela se chama `stormtrooper_division`.
+Visualizando itens de uma tabela tabela: 
+
+Comando
+```
+livro_nodejs=# \d stormtrooper_division
+[database-name]   [table-name]
+```
+
+Retorno
+```
+    Column      |  Type   | Collation | Nullable | Default 
+-----------------+---------+-----------+----------+---------
+ id_stormtrooper | integer |           | not null | 
+ id_division     | integer |           | not null | 
+Foreign-key constraints:
+    "stormtrooper_division_id_division_fkey" FOREIGN KEY (id_division) REFERENCES divisions(id)
+    "stormtrooper_division_id_stormtrooper_fkey" FOREIGN KEY (id_stormtrooper) REFERENCES stormtroopers(id)
+```
+
+- Para inserirmos a divisão/`division` do Comandante Fox (id 1 da tabela `stormtroopers`), precisamos de dois inserts na tabela de relacionamento, pois ele passou por dois postos: 501st Legion ( id 2 da tabela `divisions`) e Coruscant Guard (id 8 da tabela `divisions`).
+
+``` SQL
+INSERT INTO stormtrooper_division (id_stormtrooper, id_division) VALUES (1, 2), (1, 8);
+```
+
+- Visualizando as informações cadastradas:
+
+Comando
+``` SQL
+SELECT id_stormtrooper, name, nickname, id_patent, stormtrooper_division.id_division 
+  FROM stormtroopers 
+  INNER JOIN stormtrooper_division ON stormtroopers.id = stormtrooper_division.id_stormtrooper;
+```
+
+Retorno
+```
+ id_stormtrooper |  name   | nickname | id_patent | id_division 
+-----------------+---------+----------+-----------+-------------
+               1 | CC-1010 | Fox      |         2 |           2
+               1 | CC-1010 | Fox      |         2 |           8
+(2 rows)
+```
+
+- Visualizando os dados inseridos com mais informações(name patent e name division ao invés de id_patent e id_division):
+
+Comando
+``` SQL
+SELECT id_stormtrooper, stormtroopers.name, nickname, patents.name, divisions.name 
+	FROM stormtroopers 
+	INNER JOIN stormtrooper_division ON stormtroopers.id = stormtrooper_division.id_stormtrooper
+	INNER JOIN patents ON patents.id = stormtroopers.id_patent
+	INNER JOIN divisions ON divisions.id = stormtrooper_division.id_division;
+```
+
+Retorno
+```
+ id_stormtrooper |  name   | nickname |   name    |      name       
+-----------------+---------+----------+-----------+-----------------
+               1 | CC-1010 | Fox      | Commander | 501st Legion
+               1 | CC-1010 | Fox      | Commander | Coruscant Guard
+(2 rows)
+```
+
+O Comandante Fox(id 1 da tabela `stormtroopers`) aparece duplicado, pois é assim que os bancos SQL tratam relacionamentos muitos para muitos (n:n).
+
+#### 4.1.2 Node-postgres
+
+- Instalação do pacote no projeto(depois de iniciar com `npm init`):
+
+``` 
+npm i pg
+```
+
+- Usando o módulo `pg` com NodeJS, fica assim (arquivo `pg-create.js`):
+
+``` JS
+const { Client } = require("pg");
+
+const client = new Client({
+  user: "nathallye",
+  password: "",
+  host: "localhost",
+  port: 5432,
+  database: "livro_nodejs",
+});
+
+client.connect();
+
+const params = ["CT-5555", "Fives", 2];
+const sql = `INSERT INTO stormtroopers (name, nickname, id_patent)
+  VALUES ($1::text, $2::text, $3::int)`;
+
+client.query(sql, params)
+  .then(result => {
+    console.log(result);
+    process.exit();
+  });
+```
+
+- O script para o SELECT(arquivo `pg-retrieve.js`):
+
+``` JS
+const { Client } = require("pg");
+
+const client = new Client({
+  user: "nathallye",
+  password: "",
+  host: "localhost",
+  port: 5432,
+  database: "livro_nodejs",
+});
+
+client.connect();
+
+const params = ["CT-5555"];
+
+const sql = `SELECT * FROM stormtroopers WHERE name = $1::text`
+client.query(sql, params)
+  .then(result => {
+    console.log(result.rows);
+    process.exit();
+  });
+```
+
+- Executando:
+
+```
+$ node pg-retrieve.js
+[
+  { id: 6, name: 'CT-5555', nickname: 'Fives', id_patent: 2 }
+]
 ```
