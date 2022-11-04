@@ -1721,3 +1721,160 @@ $ node pg-retrieve.js
   { id: 6, name: 'CT-5555', nickname: 'Fives', id_patent: 2 }
 ]
 ```
+
+### 4.2 Banco de dados - MongoDB
+
+MongoDB é um software de banco de dados orientado a documentos livre, de código aberto e multiplataforma, escrito na linguagem C++. Classificado como um programa de banco de dados NoSQL, o MongoDB usa documentos semelhantes a JSON com esquemas. 
+
+Ele trabalha com conceito de documentos/`documents` em vez de linhas/rows, e coleções/`collections` em vez de tabelas e campos/`fields` em vez de columns.
+
+```
+{
+  "name": "CT-1010",
+  "nickname": "Fox",
+  "divisions": [
+    "501st Legion",
+    "Coruscant Guard"
+  ],
+  "patent": "Commander"
+}
+```
+
+No MongoDB não há a necessidade de criar o database. Ele será criado quando for utilizado pela primeria vez. Nem de criar uma colletion, que será criada quando o primeiro registro for inserido. Com o comando `use` trocamos de database.
+
+Para entrar no terminal do mongo, após instalar o MongoDB iremos criar um diretório chamado `/data/db` na raiz do computador. E para iniciar o mongo iremos abrir um terminal nesse diretório e digitar:
+
+```
+$ mongod
+```
+
+No entanto, na minha máquina não é necessário, pois ele já está rodando em segundo plano.
+
+- Vamos acessar o MOngoDB com o comando seguinte:
+
+```
+$ mongo
+> use livreo_nodejs;
+switched to db livro_nodejs
+```
+
+O console do MongoDB também é JavaScript, assim como o console do NodeJS, logo, também podemos escrever qualquer JS válido.
+
+**Mongo Hacker:** É um projeto muito legal, com ele instalado, melhora a experiência do shell do mongo, ao adicionar comandos e diversos hacks no arquivo `~/.mongorc.js`.
+
+- Para listar todos os databases disponíveis, iremos usar o comando `show dbs`:
+
+```
+> show dbs;
+admin        0.000GB
+config       0.000GB
+db_finance   0.000GB
+gryfus       3.162GB
+local        0.000GB
+orcafascio  88.101GB
+todo         0.000GB
+```
+
+- A palavra reservada `db` é um ponteiro que aponta para o database em que estamos logados:
+
+```
+> db
+livro_nodejs
+```
+
+- A sintaxe para realizar alguma coisa pelo console é:
+
+```
+db.<collectionname>.<operation>;
+```
+
+#### Inserindo registros
+
+- Podemos inserir diretamente um soldado/`stormtroopers`, sem ter criado a collection previamente:
+
+``` 
+> db.stormtroopers.insert({ name: 'CT-1010', nickname: 'Fox', divisions: ['501st Legion', 'Coruscant Guard'], patent: 'Commander' });
+WriteResult({ "nInserted" : 1 })
+```
+
+- Com isso, o banco vai automaticamente criar a collection `stormtroopers` e persisti-la no disco. Podemos visualizar as collections do banco em questão, com o comando seguinte:
+
+```
+> show collections;
+stormtroopers
+```
+
+- Podemos consultar o soldado que acabamos de inserir com o comando seguinte:
+
+```
+> db.stormtroopers.findOne();
+{
+	"_id" : ObjectId("6364511d59a03896b63f19bc"),
+	"name" : "CT-1010",
+	"nickname" : "Fox",
+	"divisions" : [
+		"501st Legion",
+		"Coruscant Guard"
+	],
+	"patent" : "Commander"
+}
+```
+
+**Obs.:** `ObjectId` é uma função interna do MongoDB que garante que esse `_id` será único. DEntro do hash de 24 caraceteres do ObjectId, existe a informação do segundo em que aquele registro foi inserido no MongoDB, podemos resgatá-lo com o método `getTimestamp()`.
+
+- Inserir mais soldados é tão simples quanto enviar um array para o BD; na verdade, podemos de fato criar uma variável com um array e depois inseri-lo:
+
+``` 
+const clones = [{ name: 'CT-1020', nickname: 'Hardcase', divisions: ['501st Legion'], patent: 'Soldier' }, { name: 'CT-27-5555', nickname: 'Fives', divisions: ['Coruscant Guard'], patent: 'Soldier' }, { name: 'CT-2224', nickname: 'Cody', divisions: ['212th Attack Battalion'], patent: 'Commander' }, { name: 'CT-7567', nickname: 'Rex', divisions: ['501st Legion'], patent: 'Capitain' }];
+
+> db.stormtroopers.insert(clones);
+BulkWriteResult({
+	"writeErrors" : [ ],
+	"writeConcernErrors" : [ ],
+	"nInserted" : 4,
+	"nUpserted" : 0,
+	"nMatched" : 0,
+	"nModified" : 0,
+	"nRemoved" : 0,
+	"upserted" : [ ]
+})
+```
+
+#### Selecionando resultados
+
+- Utilizando o comando `find()`, conseguimos fazer uma query e trazer todos os dados/`documents` cadastrados:
+
+``` 
+> db.stormtroopers.find();
+{ "_id" : ObjectId("6364511d59a03896b63f19bc"), "name" : "CT-1010", "nickname" : "Fox", "divisions" : [ "501st Legion", "Coruscant Guard" ], "patent" : "Commander" }
+{ "_id" : ObjectId("6364545059a03896b63f19bd"), "name" : "CT-1020", "nickname" : "Hardcase", "divisions" : [ "501st Legion" ], "patent" : "Soldier" }
+{ "_id" : ObjectId("6364545059a03896b63f19be"), "name" : "CT-27-5555", "nickname" : "Fives", "divisions" : [ "Coruscant Guard" ], "patent" : "Soldier" }
+{ "_id" : ObjectId("6364545059a03896b63f19bf"), "name" : "CT-2224", "nickname" : "Cody", "divisions" : [ "212th Attack Battalion" ], "patent" : "Commander" }
+{ "_id" : ObjectId("6364545059a03896b63f19c0"), "name" : "CT-7567", "nickname" : "Rex", "divisions" : [ "501st Legion" ], "patent" : "Capitain" }
+```
+
+- Se quiséssemos que o banco não retornasse o atributo `_id`, bastaria passarmos `id: 0` como segundo argumento da função `find()`. O primero é a query e o segundo quais campos queremos ou não retornar:
+
+```
+> db.stormtroopers.find({}, {_id: 0});
+{ "name" : "CT-1010", "nickname" : "Fox", "divisions" : [ "501st Legion", "Coruscant Guard" ], "patent" : "Commander" }
+{ "name" : "CT-1020", "nickname" : "Hardcase", "divisions" : [ "501st Legion" ], "patent" : "Soldier" }
+{ "name" : "CT-27-5555", "nickname" : "Fives", "divisions" : [ "Coruscant Guard" ], "patent" : "Soldier" }
+{ "name" : "CT-2224", "nickname" : "Cody", "divisions" : [ "212th Attack Battalion" ], "patent" : "Commander" }
+{ "name" : "CT-7567", "nickname" : "Rex", "divisions" : [ "501st Legion" ], "patent" : "Capitain" }
+```
+
+- Caso quiséssemos retornar apenas alguns campos, passaríamos esses campos com o número 1, indicando true:
+
+```
+> db.stormtroopers.find({}, {_id: 0, nickname: 1, divisions: 1});
+{ "nickname" : "Fox", "divisions" : [ "501st Legion", "Coruscant Guard" ] }
+{ "nickname" : "Hardcase", "divisions" : [ "501st Legion" ] }
+{ "nickname" : "Fives", "divisions" : [ "Coruscant Guard" ] }
+{ "nickname" : "Cody", "divisions" : [ "212th Attack Battalion" ] }
+{ "nickname" : "Rex", "divisions" : [ "501st Legion" ] }
+```
+
+#### Realizando buscas
+
+
