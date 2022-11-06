@@ -1788,7 +1788,7 @@ livro_nodejs
 db.<collectionname>.<operation>;
 ```
 
-#### Inserindo registros
+##### Inserindo registros
 
 - Podemos inserir diretamente um soldado/`stormtroopers`, sem ter criado a collection previamente:
 
@@ -1840,7 +1840,7 @@ BulkWriteResult({
 })
 ```
 
-#### Selecionando resultados
+##### Selecionando resultados
 
 - Utilizando o comando `find()`, conseguimos fazer uma query e trazer todos os dados/`documents` cadastrados:
 
@@ -1875,6 +1875,165 @@ BulkWriteResult({
 { "nickname" : "Rex", "divisions" : [ "501st Legion" ] }
 ```
 
-#### Realizando buscas
+##### Realizando buscas
+
+- Podemos realizar buscas por qualquer um dos atributos do nosso documento(linha), como por exemplo, contar quantos são comandantes:
+
+```
+> db.stormtroopers.find({ patent: "Commander" }).count();
+2
+```
+
+- Ou se quisermos saber quantos soldades/clones pertencem à 501st Legion:
+
+```
+> db.stormtroopers.find({ divisions: { $in: ["501st Legion"] } }).count();
+3
+```
+
+- Utilizar `.find().count` é uma forma lenta de saber quantos registros existem, pois primeiro subimos os registros para a memória com o `.find()` e depois perguntamos quantos são com o `.count()`. Podemos usar o `.count()` diretamente, com qualquer query:
+
+```
+> db.stormtroopers.count({ divisions: { $in: ["501st Legion"] } });
+3
+```
+
+- Podemos utilizar expressões regulares para simular um `LIKE` do SQL e busvatr um soldado/clone por parte do seu nome. Com a expressão `/CT-2(.*)/` teremos como retorno todos os clones que tenham o nome iniciado com CT-2:
+
+```
+> db.stormtroopers.find({ name: /CT-2(.*)/ });
+{ "_id" : ObjectId("6364545059a03896b63f19be"), "name" : "CT-27-5555", "nickname" : "Fives", "divisions" : [ "Coruscant Guard" ], "patent" : "Soldier" }
+{ "_id" : ObjectId("6364545059a03896b63f19bf"), "name" : "CT-2224", "nickname" : "Cody", "divisions" : [ "212th Attack Battalion" ], "patent" : "Commander" }
+```
+
+- Para encontrar todos os nomes que terminam com o número 5 - `{ name: /5$/}` - ou todos que começam com a letra F - `{ name: /^F/ }`.
+
+- O método `.distinct()` pode ser usado para se ter uma ideia dos valores único do database.
+
+```
+> db.stormtroopers.distinct('patent');
+[ "Capitain", "Commander", "Soldier" ]
+```
+
+- E funciona também com arrays:
+
+```
+> db.stormtroopers.distinct('divisions');
+[ "212th Attack Battalion", "501st Legion", "Coruscant Guard" ]
+```
+
+##### Atualizando informações
+
+- Com o comando `update()`, nós podemos atualizar um ou vários registros. Para trocar o nome do soldado `Fives` de `CT-27-5555` para `CT-5555`, procurando pelo apelido(ideal que essa busca seja feita pelo id para que não ocorram atualizações equivocas, tendo em vista que o ObjectId é um valor único por documento), fazemos assim:
+
+```
+> db.stormtroopers.update({ nickname: "Fives" }, { $set: { name: "CT-5555" } });
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+
+> db.stormtroopers.find({ nickname: "Fives" });
+{ "_id" : ObjectId("6364545059a03896b63f19be"), "name" : "CT-5555", "nickname" : "Fives", "divisions" : [ "Coruscant Guard" ], "patent" : "Soldier" }
+```
+
+- Utilizamos o operador `$set` para que o MongoDB entendesse que queremos atualizar um dos campos desse documento, e não ele todo. Senão, ele iria apagar todos os outros e apenas manter o que enviamos.
+
+- Por padrão, o `.update()` não realiza múltiplas operações, o que quer dizer que, caso a query case mais de um registro, apenas o primeiro encontrado é que será atualizado, é como se fosse uma "proteção" contra UPDATE sem WHERE. Porém, se soubermos exatamente o que estamos fazendo, podemos usar o terceiro para dizer que queremos simrealizar um update em vários documentos:
+
+```
+> db.stormtroopers.update({}, { $set: { age: 32 }, { multi: 1 } });
+```
+
+##### Excluindo registros
+
+- A sintaxe do comando `.remove()` é bem semelhante ao `.find()`, por aceitar um argumento que fará uma busca nos registros. Informamos a query como primeiro argumento, e o `.remove()` irá apagar todos os registros que atenderem a essa busca do banco de dados. Então, para excluir o Rex pelo apelido(ideal que essa exclusão seja feita pelo id para que não ocorram atualizações equivocas, tendo em vista que o ObjectId é um valor único por documento), basta:
+
+```
+> db.stormtroopers.remove({ nickname: "Rex" });
+WriteResult({ "nRemoved" : 1 })
+```
+
+- Outra forma de apagar registros é utilizar o método `.drop()`. A diferença é que o `.remove()` mantém os índices e as constrains (índice único) e pode ser aplicado a um documento, alguns ou todos, enquanto o `.drop()` limpa toda a collection, removendo os registros e os índices.
+
+```
+> db.stormtroopers.drop();
+```
+
+##### Excluindo registros
+
+- Ao instalar o MongoDB, outros dois pares de executáveis também ficam disponíveis, são eles: `mongoexport/mongoimport` e `mongodump/mongorestore`. A forma de uso é muito simples, podemos salvar os dados em arquivos utilizando o `mongoexport`:
+
+```
+> mongoexport -d livro_nodejs -c stormtroopers > mongodb.json
+```
+
+- E podemos usar o `mongoimport` para importar esses arquivo:
+
+```
+> mongoexport -d livro_nodejs -c stormtroopers --drop < mongodb.json
+```
+
+- Utilizamos a flag `--drop` para limpar a collection do servidor e aceitar apenas dados do arquivo. Caso seja necessário fazer uma importação incremental, não usaremos a flag `--drop`.
+
+#### 4.1.2 mongoist
+
+- Usando o módulo mongoist com NodeJS:
+
+```
+$ npm i mongoist
+```
+
+- Após instalado, importamos a lib e conectamos no servidor do banco de dados;
+
+``` JS
+const mongoist = require("mongoist");
+const db = mongoist("mongodb://localhost:27017/livro_nodejs");
+```
+
+- A sintaxe de conexão é:
+
+``` 
+mongodb://<usuario>:<senha>@<servidor>:<porta>/<database>
+?replicaSet=<nome do replica set>
+```
+
+- Como estamos conectando em localhost, não há usuário, senha, nem replicaSet. Vamos criar um arquivo que insere soldados na base e, para isso, basta chamar a função `.insert`, como fizemos quando estávamos conectados no mongo shell:
+
+``` JS
+// arquivo mongo-create.js
+
+const mongoist = require("mongoist");
+const db = mongoist("mongodb://0.0.0.0:27017/livro_nodejs");
+
+const data = {
+  "name" : "CT-5555",
+  "nickname" : "Fives",
+  "divisions" : [ "Coruscant Guard" ],
+  "patent" : "Soldier"
+}
+
+db.stormtroopers.insert(data)
+  .then(result => {
+    console.log(result);
+    process.exit();
+  });
+```
+
+**Obs.:** Devido a atualização do NodeJS a uri no seguinte formato `mongodb://localhost:27017/livro_nodejs` está dando erro, buscando mais informações na internet encontrei que substituindo o localhost por `0.0.0.0` volta a funcionar.
+
+- Podemos notar que `db.stormtroopers.insert()` retorna uma promise, por isso encadeamos um `.then` para poder imprimir o resultado da execução. Invocamos o método `process.exit()` para liberar o terminal, avisando que o nosso script encerrou:
+
+```
+$ node mongo-create.js 
+{
+  name: 'CT-5555',
+  nickname: 'Fives',
+  divisions: [ 'Coruscant Guard' ],
+  patent: 'Soldier',
+  _id: 6367091dca7bae1ed8699205
+}
+```
+
+O retorno vem dentro de colchetes, pois o método `.find()` pode retornar uma lista de documentos, a depender da query.
+
+### 4.3 Banco de dados - Redis
 
 
