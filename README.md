@@ -2032,8 +2032,192 @@ $ node mongo-create.js
 }
 ```
 
+- Agora fazermos outro arquivo para recuperar o que está gravado no banco:
+
+``` JS
+// arquivo mongo-retrieve.js
+
+const mongoist = require("mongoist");
+const db = mongoist("mongodb://localhost:27017/livro_nodejs");
+
+db.stormtroopers.find()
+  .then(result => {
+    console.log(result);
+    process.exit();
+  })
+```
+
+- É bem parecido, mas agora usamos a função `.find()`. 
+
+```
+node mongo-retrieve.js 
+[
+  {
+    _id: 6364511d59a03896b63f19bc,
+    name: 'CT-1010',
+    nickname: 'Fox',
+    divisions: [ '501st Legion', 'Coruscant Guard' ],
+    patent: 'Commander'
+  },
+  {
+    _id: 6364545059a03896b63f19bd,
+    name: 'CT-1020',
+    nickname: 'Hardcase',
+    divisions: [ '501st Legion' ],
+    patent: 'Soldier'
+  }
+]
+```
+
 O retorno vem dentro de colchetes, pois o método `.find()` pode retornar uma lista de documentos, a depender da query.
 
 ### 4.3 Banco de dados - Redis
 
+O armazenamento de dados na memória open source usado por milhões de desenvolvedores como banco de dados, cache, mecanismo de streaming e agente de mensagens.
 
+#### 4.3.1 Modelagem
+
+Não fazemos queries complexas no Redis, apenas basicamente retornamos valores dada uma certa chave exata, então a modelagem dos valores pode ser qualquer coisa, desde valores simples até objetos.
+
+- Após instalar o servidor do Redis, para subir o servidor iremos executar o comando seguinte:
+
+```
+$ redis-server
+```
+
+- E para se conectar no Redis rodaremos o comando seguinte:
+
+```
+$ redis-cli
+127.0.0.1:6379>
+```
+
+- O comando `keys` lista as chaves existentes:
+
+```
+127.0.0.1:6379> keys *
+ 1) "queues"
+ 2) "queue:default"
+ 3) "cron_jobs"
+```
+
+- Para criar uma chave com um valor usaremos o comando `set`:
+
+```
+127.0.0.1:6379> set obi-wan "Não há emoção, há a paz."
+OK
+```
+
+- Podemos sobrescrever o valores de uma chave apenas setando-a novamente:
+
+```
+127.0.0.1:6379> set obi-wan "A emoção, ainda a paz. A ignorância, ainda o conhecimento."
+OK
+```
+
+- É possível realizar uma busca por chaves:
+
+```
+127.0.0.1:6379> keys obi*
+1) "obi-wan"
+```
+
+Porém não é possível realizar busca pelos valores, por isso que não dizemos que o Redis é um Banco de Dados.
+
+- Outro recurso muito util é o TTL(Time to Live), em que escolhemos determinado tempo em que uma chave deve existir, após certo tempo ela simplesmente desaparece (o Redis se encarregad e apagá-la). Usamos o comando `set` e depois `expire` para dizer quantos segundos aquela chavae deve permanecer, e dpois o comando `ttl` para ver quanto tempo de vida ainda resta:
+
+```
+127.0.0.1:6379> set a-ameaca-fantasma "Episode I"
+OK
+
+127.0.0.1:6379> expire a-ameaca-fantasma 327
+(integer) 1
+
+127.0.0.1:6379> ttl a-ameaca-fantasma
+(integer) 274
+```
+
+Uma vez expirado o tempo daquela chave, o retorno é -2.
+
+- Com o comando `info`, é possível ter uma rápida ideia do que está acontecendo com os recursos do servidor:
+
+```
+info memory
+# Memory
+used_memory:865256
+used_memory_human:844.98K
+used_memory_rss:12587008
+used_memory_rss_human:12.00M
+used_memory_peak:865256
+...
+```
+
+Para uma boa performace de leitura, é indicado que a máquina na qual o Redis será instalado tenha memória RAM suficiente para comportar todos os dados que você pretende armazenar nele.
+
+#### 4.3.2 node-redis
+
+- Em nossas aplicações NodeJS, é bem comum utilizar o Redis para cache ou para guardar a sessão dos usuários. Usando o módulo node-redis:
+
+```
+$ npm i redis
+```
+
+- Podemos conectar no servidor do Redis e inserir a nossa chave:
+
+``` JS
+// arquivo redis-create.js
+
+const redis = require("redis");
+const { promisify } = require("util");
+
+const client = redis.createClient({
+  host: "localhost",
+  port: 6379
+});
+
+const setAsync = promisify(client.set).bind(client);
+
+setAsync("jedi-code", "Nao ha emocao, ha a paz. Nao ha ignorancia, ha conhecimento. Nao ha paixao, ha serenidade.Nao ha caos, ha harmonia. Nao ha morte, ha a Forca.")
+  .then(result => {
+    console.log(result)
+    process.exit()
+  })
+```
+
+- Executando:
+
+```
+$ node redis-create.js
+OK
+```
+
+- E agora, para conferir o que foi inscrito no Redis:
+
+``` JS
+// arquivo redis-retrieve.js
+
+const redis = require("redis");
+const { promisify } = require("util");
+
+const client = redis.createClient({
+  host: "localhost",
+  port: 6379
+});
+
+const getAsync = promisify(client.get).bind(client);
+
+getAsync("jedi-code")
+  .then(result => {
+    console.log(result)
+    process.exit()
+  })
+```
+
+- Executando:
+
+```
+$ node redis-retrieve
+Nao ha emocao, ha a paz. Nao ha ignorancia, ha conhecimento. Nao ha paixao, ha serenidade.Nao ha caos, ha harmonia. Nao ha morte, ha a Forca.
+```
+
+Usamos o método `promisify` do módulo útil do core do NodeJS para trabalhar com promises em vez de callbacks.
