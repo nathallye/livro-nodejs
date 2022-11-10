@@ -2304,3 +2304,84 @@ Agora podemos encerrar o processo com Ctrl + C, em seguida, vamos definir a util
 
 Assim, podemos executar `npm run dev`, ou `yarn dev`, para o Nodemon iniciar nosso servidor/server e ficar ouvindo as alterações dos arquivos em disco para reiniciar automáticamente o processo.
 
+- Vamos utilizar ES6 modules, então, para isso, indicamos `"type": "module"`, no `package.json`:
+
+``` JSON
+{
+  "name": "express",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon server/app"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+- E trocamos o `require` por `import` no arquivo `server/app.js`:
+
+``` JS
+import express from "express";
+const app = express();
+
+app.get(";", (req, res) => {
+  res.send("Olá!");
+});
+
+// app.listen(3000);
+app.listen(3000, () => {
+  console.log("Acesse http://localhost, o app está rodando na porta 3000...");
+});
+```
+
+O valor padrão do `type` é `commonjs`. O CommonJS foi o sistema de módulos adotado no NodeJS desde o início, em que usamos `require` e `module.exports`.
+
+### 5.2 Middlewares
+
+Um middleware é uma função que intercepta cada requisição que a aplicação recebe, realiza algum processamento, delega ao próximo middleware o restante da execução, ou responde, finalizando o ciclo de vida desse request. Um middleware pode:
+
+- executar qualquer código;
+- alterar os objetos `request` e `response`;
+- chamar o próximo middleware da cadeia, por meio da função `next`;
+- terminar o ciclo request response.
+
+Pelo método `app.use()`, declaramos os middlewares do Express. Toda requisição é respondida por um callback do tipo:
+
+``` JS
+function (request, response, next) {} 
+or 
+(request, response, next) => {}
+```
+
+Detalhando cada um dos parâmetros:
+
+#### Objeto err
+
+Este objeto é um objeto de erro do tipo `Error` e só é o primeiro argumento do middleware de erros.
+
+``` JS
+const err = new Error("Something happened");
+err.status = 501;
+```
+
+Podemos anexar uma propriedade `status` para que o nosso manipulador de erro saiba com qual status code responder a solicitação. Sempre que um `new Error()` for disparado, o middleware de erro será invocado pelo ExpressJS, assim podemos fazer todos os tratamentos num único ponto do código, facilitando muito a leitura e o debug da aplicação.
+
+#### Objeto request
+
+Nesse objeto, temos acesso às informações da solicitação que chegou à nossa aplicação, corpo, método, URL, query string, parâmetros, user agent, IP etc. Geralmente abreviam `request` para `req`. Conseguimos anexar novas propriedades ou sobrescrever partes do objeto request para propagar informações entre a cadeia de middlewares.
+
+#### Objeto response
+
+O objeto `response` é nosso para manipular da forma que quisermos. Tem funções para responder à requisição, então conseguimos devolver um status code, escrever na saída, encerrar, enviar JSON, texto, cabeçalhos, cookies etc. Você vai encontrar outros códigos por aí, escrito `response` apenas como `res`.
+
+#### Objeto next
+
+Essa função repassa para o próximo middleware na cadeia, caso precisemos, por exemplo, manipular alguma coisa do `request` e então repassar para outro middleware terminar de responder uma requisição.
+
