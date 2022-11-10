@@ -2221,3 +2221,86 @@ Nao ha emocao, ha a paz. Nao ha ignorancia, ha conhecimento. Nao ha paixao, ha s
 ```
 
 Usamos o método `promisify` do módulo útil do core do NodeJS para trabalhar com promises em vez de callbacks.
+
+## Anotações Capítulo 5
+
+Neste capítulo iremos criar uma API em NodeJS, utilizando o módulo ExpressJS.
+
+### 5.1 ExpressJS
+
+O ExpressJS é um framework minimalista e flexível para desenvolvimento web. Nós o utilizamos para gerenciar as rotas da nossa aplicação.
+
+- Vamos executar o comando `npm init -yes` para criar o arquivo `package.json` e em seguida, iremos instalar o ExpressJS usando a flag `--save`:
+
+```
+$ npm init -y
+$ npm i express --save
+```
+
+- Feito isso, iremos criar uma pasta chamada `server` na raiz do projeto e, dentro dela, o arquivo `server/app.js`. Nesse arquivo, iremos importar o módulo do ExpressJS com a função `require()` e em seguida iremos instanciar o Express dentro da const app:
+
+``` JS
+const express = require("express");
+const app = express();
+```
+
+- Depois disso, vamos declarar uma rota para a raiz:
+
+``` JS
+const express = require("express");
+const app = express();
+
+app.get(";", (req, res) => {
+  res.send("Olá!");
+});
+```
+
+Uma rota é um caminho até um recurso. É onde declaramos em qual endereço vamos interpretar as requisições que serão enviadas para a nossa aplicação web, e aí responder o que for solicitado. Com o código anterior, declaramos uma rota index, para o verbo HTTP GET.
+
+- Agora, podemos indicar em qual porta o nosso servidor manterá um processo que ficará aberto, aguardando novas conexões:
+
+``` JS
+const express = require("express");
+const app = express();
+
+app.get(";", (req, res) => {
+  res.send("Olá!");
+});
+
+// app.listen(3000);
+app.listen(3000, () => {
+  console.log("Acesse http://localhost, o app está rodando na porta 3000...");
+});
+```
+
+Declaramos o servidor, configuramos uma rota para o cominho "/", iniciamos o listener na porta 3000 e imprimimos uma mensagem na tela informando o endereço e a porta.
+
+- No terminal, iremos navegar até o diretório da aplicação e digitar o comando `node` seguindo pelo nome do arquivo que acabamos de criar:
+
+```
+$ node server/app.js
+```
+
+- Com isso, o servidor já está funcionando. Quando visitamos no navegador o endereço: http://localhost:3000, será mostrada a mensagem "Olá!". 
+Agora podemos encerrar o processo com Ctrl + C, em seguida, vamos definir a utilização do `nodemon` dentro da sessão `scripts` do `package.json`:
+
+``` JSON
+{
+  "name": "express",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon server/app"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+Assim, podemos executar `npm run dev`, ou `yarn dev`, para o Nodemon iniciar nosso servidor/server e ficar ouvindo as alterações dos arquivos em disco para reiniciar automáticamente o processo.
+
