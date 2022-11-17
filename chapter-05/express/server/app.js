@@ -1,7 +1,7 @@
-import express, { response } from "express";
+import express from "express";
 const app = express();
 
-app.get(";", (req, res) => {
+app.get("/", (req, res) => {
   res.send("Olá!");
 });
 
@@ -17,9 +17,18 @@ app.use((err, request, response, next) => {
 });
 
 app.use((request, response, next) => {
-  if (request.url ===  '/favicon.icon') {
-
+  if (request.url ===  "/favicon.icon") {
+    response.writeHead(200, { "Content-Type": "image/x-icon" });
+    response.end("");
+  } else {
+    next();
   }
+});
+
+app.use((request, response, next) => {
+  response.header("Acess-Control-Allow-Origin", "*");
+  response.header("Acess-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
 });
 
 // app.listen(3000);

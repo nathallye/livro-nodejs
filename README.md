@@ -2250,7 +2250,7 @@ const app = express();
 const express = require("express");
 const app = express();
 
-app.get(";", (req, res) => {
+app.get("/", (req, res) => {
   res.send("Olá!");
 });
 ```
@@ -2263,7 +2263,7 @@ Uma rota é um caminho até um recurso. É onde declaramos em qual endereço vam
 const express = require("express");
 const app = express();
 
-app.get(";", (req, res) => {
+app.get("/", (req, res) => {
   res.send("Olá!");
 });
 
@@ -2331,11 +2331,10 @@ Assim, podemos executar `npm run dev`, ou `yarn dev`, para o Nodemon iniciar nos
 import express from "express";
 const app = express();
 
-app.get(";", (req, res) => {
+app.get("/", (req, res) => {
   res.send("Olá!");
 });
 
-// app.listen(3000);
 app.listen(3000, () => {
   console.log("Acesse http://localhost, o app está rodando na porta 3000...");
 });
@@ -2399,7 +2398,7 @@ A forma correta de tratar um erro é declarar um objeto `Error` e enviar para a 
 import express from "express";
 const app = express();
 
-app.get(";", (req, res) => {
+app.get("", (req, res) => {
   res.send("Olá!");
 });
 
@@ -2409,7 +2408,6 @@ app.use((request, response, next) => {
   next(err);
 });
 
-// app.listen(3000);
 app.listen(3000, () => {
   console.log("Acesse http://localhost, o app está rodando na porta 3000...");
 });
@@ -2448,6 +2446,76 @@ Dessa forma, evitamos o vazamento das execuções do script (stack trace) para o
 
 É um comportamento padrão dos navegadores que eles sempre peçam, para um domínio, o arquivo `favicon.ico`. O favicon é aquele icone que fica no lado esquerdo do nome do título do site, na aba do navegador. Como estamos escrevendo uma API RESTful, não temos necessidade de servir esse ícone. Para não entregar sempre um 404 de imagem não encontrada, podemos devolver um vazio.
 
-´´´ JS
+``` JS
+app.use((request, response, next) => {
+  if (request.url ===  "/favicon.icon") {
+    response.writeHead(200, { "Content-Type": "image/x-icon" });
+    response.end("");
+  } else {
+    next();
+  }
+});
+```
 
-´´´
+Utilizamos um middleware para verificar se a URL requisitada foi `/favicon.icon`. Caso seja, iremos devolver o status code 200, com o cabeçalho do tipo de imgem `.icon`, e finalizamos a resposta com uma string vazia. Caso contrário, se não for o favicon que foi solicitado, apenas repassamos a requisição para o próximo manipulador(middleware).
+
+Nesse caso, seria o mesmo que fazer:
+
+``` JS 
+app.get("/favicon.icon", (request, response, next) => {
+  response.writeHead(200, { "Content-Type": "image/x-icon" });
+  response.end("");
+});
+```
+
+##### CORS (Cross-origin resource sharding)
+
+A sigla CORS significa compartilhamento de recursos entre origens diferentes, que é o fato de uma aplicação web solicitar informações de um domínio ou subdomínio diferente do seu próprio. O comportamento padrão dos navegadores web atuais é bloquear esse tipo de requisição por motivos de segurança, impedindo que a aplicação seja afetada pela resposta não confiável.
+
+Se quisermos permitir o uso do recurso, liberamos o cabeçalho CORS na nossa API, para que qualquer cliente consiga utilizar, de qualquer cliente consiga utilizar, de qualquer domínio, incluindo alguns cabeçalhos nas respostas HTTP. Para isso, utilizaremos a seguinte configuração no ExpressJS antes da declaração das rotas:
+
+``` JS
+app.use((request, response, next) => {
+  response.header("Acess-Control-Allow-Origin", "*");
+  response.header("Acess-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
+```
+
+É importante notar que o asteristico libera para todas as origens. Outra forma é utilizar o pacote `cors`, que faz a mesma coisa porém encapsula essa complexidade.
+
+``` JS
+const cors = require("cors");
+app.use(cors());
+
+// or with ES6 modules
+import cors from "cors";
+app.use(cors());
+```
+
+Existem diversas configurações disponíveis, como liberar somente para certo domínio, somente alguns métodos HTTP, etc.
+
+O módulo cors é um exemplo de middleware de terceiros. Ainda existem diversos outros que podemos adicionar com a função `app.use()` e, assimm, por meio dessa soma de pequenos módulos, construir a nossa aplicação.
+
+O lado bom é que não temos que nos preocupar em codificar esses comportamentos, pois já existem módulos npm da comunidade que resolvem diversos desses problemas.
+
+Um middleware embutido (built-in) já faz parte do core do framework, como, por exemplo, para servir arquivos estáticos:
+
+``` JS
+app.use(express.static(path.join(__dirname, "public")));
+```
+
+Ou com ES6 modules, já que a variável global `__dirname` não existe, precisamos de um pequeno hack:
+
+``` JS
+import express from "express";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const app = express();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+app.use(express.static(__dirname + "/../public"));
+
+export default app;
+```
