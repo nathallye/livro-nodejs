@@ -2362,7 +2362,7 @@ or
 
 Detalhando cada um dos parâmetros:
 
-#### Objeto err
+##### Objeto err
 
 Este objeto é um objeto de erro do tipo `Error` e só é o primeiro argumento do middleware de erros.
 
@@ -2373,15 +2373,81 @@ err.status = 501;
 
 Podemos anexar uma propriedade `status` para que o nosso manipulador de erro saiba com qual status code responder a solicitação. Sempre que um `new Error()` for disparado, o middleware de erro será invocado pelo ExpressJS, assim podemos fazer todos os tratamentos num único ponto do código, facilitando muito a leitura e o debug da aplicação.
 
-#### Objeto request
+##### Objeto request
 
 Nesse objeto, temos acesso às informações da solicitação que chegou à nossa aplicação, corpo, método, URL, query string, parâmetros, user agent, IP etc. Geralmente abreviam `request` para `req`. Conseguimos anexar novas propriedades ou sobrescrever partes do objeto request para propagar informações entre a cadeia de middlewares.
 
-#### Objeto response
+##### Objeto response
 
 O objeto `response` é nosso para manipular da forma que quisermos. Tem funções para responder à requisição, então conseguimos devolver um status code, escrever na saída, encerrar, enviar JSON, texto, cabeçalhos, cookies etc. Você vai encontrar outros códigos por aí, escrito `response` apenas como `res`.
 
-#### Objeto next
+##### Objeto next
 
 Essa função repassa para o próximo middleware na cadeia, caso precisemos, por exemplo, manipular alguma coisa do `request` e então repassar para outro middleware terminar de responder uma requisição.
 
+#### 5.2.1 Entendendo a utilidade
+
+Usamos middlewares para tratar os requests que o servidor irá receber.
+
+##### Tratando página não encontrada
+
+A forma correta de tratar um erro é declarar um objeto `Error` e enviar para a função `next(err)` com um middleware após já ter declarado todas as rotas da aplicação. Por padrçao, o ExpressJS já declara como as rotas não declaradas e os erros não respondidos. Ao acessar `http://localhost:3000/nao-existe`, é retornado: `Cannot GET /nao-existe`, com status code 404.
+
+- Podemos customizar o nosso `server/app.js` para retornar outra mensagem para rotas não encontradas:
+
+``` JS
+import express from "express";
+const app = express();
+
+app.get(";", (req, res) => {
+  res.send("Olá!");
+});
+
+app.use((request, response, next) => {
+  const err = new Error("Not Found");
+  err.status = 404;
+  next(err);
+});
+
+// app.listen(3000);
+app.listen(3000, () => {
+  console.log("Acesse http://localhost, o app está rodando na porta 3000...");
+});
+```
+
+- Feito isso, a resposta já muda para:
+
+```
+Error: Not Found
+  at file:///home/nathallye/dev/livros/livro-nodejs/chapter-05/express/server/app.js:9:15
+```
+
+É importante que o código de tratamento de error seja declarado depois da criação de todas as rotas da aplicação, pois, se alguma requisição não coincidir com as declaradas, podemos seguramente assumir que o nosso servidor não tem aquele recurso e disparar um status code 404 para o cliente.
+
+``` JS
+const err = new Error("Not Found");
+err.status = 404; 
+```
+
+Caso seja algum outro tipo de erro, tratamos de apenas renderizar uma página HTML ou mostrar um JSON simplificado com o motivo de ter falhado, mas sem vazar para o cliente todo o stack trace do erro (detalhes que podem comprometer a segurança da aplicação, como, por exemplo, o caminho no servidor em que os nossos arquivos estão).
+
+- Agora, só falta customizar o middleware de error, que deve sempre ser o último da cadeira e recebe quatro argumentos: `err`, `request` `response` e `next`.
+
+``` JS
+app.use((err, request, response, next) => {
+  if (err.status !== 404) console.log(err.stack);
+  response.status(err.status || 500).json({ err: err.mensage });
+});
+```
+
+Podemos notar que colocamos o `err.stack` para ser mostrado no `console.log()`. Dessa forma, irá aparecer a pilha de execução no terminal em que subimos a aplicação quando algum erro for capturado por esse middleware do ExpressJS, facilitando a detecção do problema equanto estivermos desenvolvendo.
+
+Dessa forma, evitamos o vazamento das execuções do script (stack trace) para o usuário, já que podemos renderizar um HTML de erro 500, um JSON ou uma mensagem amigável do que ocorreu sem expor informações que comprometeriam a segurança da aplicação.
+
+##### favicon.ico
+
+É um comportamento padrão dos navegadores que eles sempre peçam, para um domínio, o arquivo `favicon.ico`. O favicon é aquele icone que fica no lado esquerdo do nome do título do site, na aba do navegador. Como estamos escrevendo uma API RESTful, não temos necessidade de servir esse ícone. Para não entregar sempre um 404 de imagem não encontrada, podemos devolver um vazio.
+
+´´´ JS
+
+´´´
