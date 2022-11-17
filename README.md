@@ -2356,7 +2356,7 @@ Pelo método `app.use()`, declaramos os middlewares do Express. Toda requisiçã
 
 ``` JS
 function (request, response, next) {} 
-or 
+// or 
 (request, response, next) => {}
 ```
 
