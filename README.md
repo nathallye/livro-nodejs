@@ -2558,3 +2558,102 @@ app.post("/weapons", mid3);
 ```
 
 Na declaração acima, o `mid1` sempre será executado, tanto antes do PUT quanto do POST.
+
+##### Body Parser
+
+Quando recebemos uma requisição com corpo (POST, PUTou PATCH) no NodeJS, ela pode chegar a form url encoded, Form Data ou JSON. Por padrão, o ExpressJS 4 não entende esses formatos e recebe as requisições apenas como texto puro.
+
+Então, para que o servidor entenda esses formatos corretamente e já faça o parser, precisamos avisar à nossa aplicação quais tipos de body ela aceita. Configurando o `app` no arquivo `server/app.js`:
+
+``` JS
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+```
+
+Feito isso, o nosso servidor está configurado para trabalhar como uma API REST. Podemos notar o `extended: true`, que utilizamos para que o parser se estenda a objetos escadeados; do contrário, o parser seria feito apenas no primeiro nível do corpo da requisição.
+
+##### Objeto express.Router()
+
+Para organizar as rotas da nossa aplicação em outros arquivos, de maneira simples, temos disponível o objeto `express.Router()`. Utilizando-o, podemos extrair as rotas:
+
+- Arquivo server/app.js
+
+``` JS
+import express from "express";
+import routes from "./routes/index.js";
+
+const app = express();
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(routes);
+
+app.use((request, response, next) => {
+  const err = new Error("Not Found");
+  err.status = 404;
+  next(err);
+});
+
+app.use((err, request, response, next) => {
+  if (err.status !== 404) console.log(err.stack);
+  response.status(err.status || 500).json({ err: err.mensage });
+});
+
+app.listen(3000, () => {
+  console.log("Acesse http://localhost, o app está rodando na porta 3000...");
+});
+```
+
+A sintaxe para a criação de uma rota é:
+
+``` JS
+<objeto router>.<verbo HTTP>("/<endpoint>/<parâmetro>", (<request>, <response>) => {
+  response.<função para escrever a resposta>
+});
+```
+
+- Arquivo routes/index.js
+
+``` JS
+import { Router } from "express";
+
+const routes = new Router;
+
+routes.get("/", (req, res) => {
+  res.send("Olá!");
+});
+
+routes.use((request, response, next) => {
+  response.writeHead(200, { "Content-Type": "image/x-icon" });
+  response.end("");
+});
+
+export default routes;
+```
+
+Podemos notar que trocamos o `app.get` por `routes.get`, pois não temos mais acesso à instância do express, e sim à instância do Router.
+
+Diferentemente do CommonJS, em que o NodeJS procura um arquivo local do projeto chamado `routes.js` ou `routes/index.js` (quando usamos o `require("./routes")`), quando usamos Modules, devemos informar o caminho completo e exato (`from "routes/index.js"`).
+
+- Devemos olhar o arquivo `server/app.js` reconhecendo essas quatro partes:
+
+##### Configuração do app
+
+Nessa parte do `app.js` nós colocamos todos os middlewares de aplicação, de terceiros e embutidos (built-in), que queremos que afetem todos os requests.
+Nessa parte iremos definir o servidor, configurar o que ele faz, quais recursos ele aceita, como trabalha com cookies, seções etc.
+
+##### Rotas
+
+Rotas ou roteamento é onde declaramos os endpoints da aplicação. Sempre devem vir depois de todas as configurações, mas antes do tratamento de erros.
+
+##### Tratamento de erros
+
+Definimos o tratamento de erros e manipulação de 404 como uma área especial do `server/app.js`, porque a ordem em que ele será escrito no código é importante e afeta diretamente a aplicação. O error handling deve ser declarado após todas as rotas, como último middleware da apicação.
+
+##### Listener do servidor
+
+É onde de fato o servidor é declarado, informamos em qual porta ele irá aceitar as requisições e, mais para frente, será onde escalaremos a nossa aplicação verticalmente.
+
+#### 5.2.2 Tipos de resposta
+
+
