@@ -2519,3 +2519,42 @@ app.use(express.static(__dirname + "/../public"));
 
 export default app;
 ```
+
+E os middlewares de rota são aqueles em que passamos um caminho e um objeto `router` como argumentos.
+
+``` JS
+app.use("/", require("./routes"));
+// or
+app.use("/", require("./api"));
+```
+
+Conseguimos limitar a cadeia de atuação, de acordo com a ordem de definição, caminho (rota ou path) e método HTTP. Imagine alguns middleares `mid1`, `mid2` e `mid3` parecidos com isso:
+
+``` JS
+const mid1 = (request, response, next) => {
+  // ...
+  next();
+}
+```
+
+Podemos combiná-los de diversas formas:
+
+``` JS
+app.use(mid1, mid2, mid3);
+```
+
+O código anterior executará o `mid1`, depois o `mid2` e por último o `mid3` se cada um deles não passar nenhum argumento para função `next()`. Caso o `mid1`, por exemplo, invoque `next(err)`, com um objeto `Error`, a cadeia de middlewares é quebrada, ou seja, `mid2` e `mid3` nunca serão invocados, e a execução pula para o middleware de erro.
+
+``` JS
+app.get("/weapons", mid3);
+```
+
+A declaração acima, só executará o `mid3` se o request for um GET na rota `/weapons`.
+
+``` JS
+app.use(mid1);
+app.put("/weapons", mid2, mid3);
+app.post("/weapons", mid3);
+```
+
+Na declaração acima, o `mid1` sempre será executado, tanto antes do PUT quanto do POST.
