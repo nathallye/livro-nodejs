@@ -2656,4 +2656,80 @@ Definimos o tratamento de erros e manipulação de 404 como uma área especial d
 
 #### 5.2.2 Tipos de resposta
 
+Uma das vantagens de trabalhar com NodeJS é que estamos escrevendo JavaScript; então, para fazer uma API que retorne um JSON, tudo o que temos a fazer é escrever esse JSON. Não precisamos fazer um mapper, parser ou converter um array para JSON. Apenas escrevemos o JSON (JavaScript Object Notation) que queremos diretamente. Se quisermos mostrar um JSON na tela, podemos trocar o `res.send()` por `res.json()`:
+
+``` JS
+res.json({ "name": "Nathallye Bacelar", "email": "nathallyet@gmail.com" });
+```
+
+Junto à resposta, podemos enviar o status code:
+
+``` JS
+res.status(201);
+res.json({ "name": "Nathallye Bacelar", "email": "nathallyet@gmail.com" });
+```
+
+É importante que o status seja enviado antes da resposta (do `.send()` ou do `.json()`) e invoquemos uma única vez por requisição uma das seguintes funções: `.end()`, `.send` ou `.json`. Caso contrário, um erro de cabeçalho já enviado será retornado no console do NodeJS.
+
+- Arquivo server/app.js:
+
+``` JS
+import express from "express";
+
+const app = express();
+
+app.get("/", (req, res) => {
+  res.status(201);
+  res.json({ "name": "Nathallye Bacelar", "email": "nathallyet@gmail.com" });
+});
+
+app.listen(3000, () => {
+  console.log("Acesse http://localhost, o app está rodando na porta 3000...");
+});
+```
+
+É possível identificar qual o tipo de mídia que o cliente quer receber e então retornar o formato mais adequado que tivermos à mão. Por exemplo, se o cabeçalho `accept` for `text/plain`, o retorno deverá ser um texto puro:
+
+``` 
+$ curl -H "Accept: text/plain" http:localhost:3000
+name; email
+Nathallye Bacelar; nathallyet@gmail.com
+```
+
+Caso seja `aplication/json`, deverá retornar um JSON:
+
+``` 
+$ curl -H "Accept: aplication/json" http:localhost:3000
+{ "name": "Nathallye Bacelar","email": "nathallyet@gmail.com" }
+```
+
+Para fazermos isso, precisamos apenas identificar o que o cliente espera, podemos usar um if ou utilizar o `response.format` como o exemplo abaixo:
+
+``` JS
+import express from "express";
+
+const app = express();
+const data = { "name": "Nathallye Bacelar", "email": "wbrunom@gmail.com" };
+
+app.get("/", (request, response) => {
+  response.format({
+    text: () => {
+      const keys = Object.keys(data);
+      const values = Object.values(data);
+
+      response.write(`${keys.join("; ")}\n`);
+      response.write(`${values.join("; ")}\n`);
+      response.end();
+    },
+    default: () => {
+      response.json(data);
+    }
+  })
+});
+
+app.listen(3000, () => {
+  console.log("Acesse http://localhost, o app está rodando na porta 3000...");
+});
+```
+
 
